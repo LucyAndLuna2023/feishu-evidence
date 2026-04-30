@@ -1,0 +1,13 @@
+{
+  "name": "feishu-evidence-app",
+  "version": "1.0.0",
+  "description": "劳动纠纷证据录入H5网页应用",
+  "main": "api/server.js",
+  "scripts": {
+    "start": "node api/server.js"
+  },
+  "dependencies": {},
+  "engines": {
+    "node": ">=14.0.0"
+  }
+}

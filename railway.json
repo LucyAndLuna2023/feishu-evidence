@@ -1,0 +1,13 @@
+{
+  "build": {
+    "builder": "nixpacks",
+    "config": {
+      "NODE_VERSION": "18"
+    }
+  },
+  "deploy": {
+    "numInstances": 1,
+    "restartPolicyType": "onFailure",
+    "restartPolicyMaxRetries": 10
+  }
+}

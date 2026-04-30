@@ -1,0 +1,12 @@
+[build]
+builder = "nixpacks"
+builderConfig =
+  { NODE_VERSION = "18" }
+
+[deploy]
+numInstances = 1
+restartPolicyType = "onFailure"
+restartPolicyMaxRetries = 10
+
+[railway]
+environment = "production"

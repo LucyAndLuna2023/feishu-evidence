@@ -1,0 +1,17 @@
+node_modules/
+.DS_Store
+*.log
+.env
+*.swp
+.env.*
+!.gitignore
+!.package.json
+!.api/
+!.index.html
+!.app.js
+!.config.js
+!.README.md
+!.railway.json
+!.railway.toml
+!.vercel.json
+!.github/
