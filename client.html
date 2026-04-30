@@ -309,6 +309,139 @@
             border-left: 3px solid #667eea;
         }
         
+        /* AI Audit Badge */
+        .ai-audit-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 3px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 500;
+            margin-left: 6px;
+        }
+        .ai-audit-badge.passed {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+        .ai-audit-badge.failed {
+            background: #ffebee;
+            color: #c62828;
+        }
+        .ai-audit-badge.pending {
+            background: #fff3e0;
+            color: #ef6c00;
+        }
+        
+        /* AI Audit Panel */
+        .ai-audit-panel {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 12px;
+            border: 1px solid #e0e0e0;
+        }
+        .ai-audit-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .ai-audit-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .ai-audit-score {
+            font-size: 18px;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 20px;
+        }
+        .ai-audit-score.high {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+        .ai-audit-score.medium {
+            background: #fff3e0;
+            color: #ef6c00;
+        }
+        .ai-audit-score.low {
+            background: #ffebee;
+            color: #c62828;
+        }
+        .ai-audit-comment {
+            font-size: 12px;
+            color: #666;
+            line-height: 1.6;
+            white-space: pre-wrap;
+        }
+        .ai-audit-issues {
+            margin-top: 10px;
+        }
+        .ai-issue-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 6px;
+            font-size: 12px;
+            color: #c62828;
+            margin-bottom: 6px;
+            padding: 8px;
+            background: #ffebee;
+            border-radius: 6px;
+        }
+        .ai-suggestion-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 6px;
+            font-size: 12px;
+            color: #1565c0;
+            margin-bottom: 6px;
+            padding: 8px;
+            background: #e3f2fd;
+            border-radius: 6px;
+        }
+        
+        /* AI Stats Card */
+        .ai-stats-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px;
+            margin: 0 15px 15px;
+            border-radius: 12px;
+        }
+        .ai-stats-header {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .ai-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+        }
+        .ai-stat-item {
+            text-align: center;
+            padding: 10px;
+            background: rgba(255,255,255,0.15);
+            border-radius: 8px;
+        }
+        .ai-stat-value {
+            font-size: 20px;
+            font-weight: 700;
+        }
+        .ai-stat-label {
+            font-size: 11px;
+            opacity: 0.9;
+            margin-top: 4px;
+        }
+        
         /* Add Custom Evidence */
         .add-evidence-btn {
             width: 100%;
@@ -870,6 +1003,7 @@
                                         ${item.name}
                                         ${item.required ? '<span class="evidence-required">*必填</span>' : ''}
                                         ${item.isCustom ? '<span style="color: #667eea; font-size: 11px;">(自定义)</span>' : ''}
+                                        ${item.aiAudit ? `<span class="ai-audit-badge ${item.aiAudit.passed ? 'passed' : 'failed'}">🤖 AI评分: ${item.aiAudit.score}</span>` : ''}
                                     </div>
                                     <span class="evidence-status ${item.status}">${statusNames[item.status]}</span>
                                 </div>
@@ -887,12 +1021,47 @@
                                     </div>
                                 ` : ''}
                                 ${item.note ? `<div class="evidence-note">💬 ${item.note}</div>` : ''}
+                                ${item.aiAudit && item.aiAudit.issues && item.aiAudit.issues.length > 0 ? `
+                                    <div class="ai-audit-panel" onclick="event.stopPropagation()">
+                                        <div class="ai-audit-header">
+                                            <span class="ai-audit-title">🤖 AI审核结果</span>
+                                            <span class="ai-audit-score ${item.aiAudit.score >= 80 ? 'high' : item.aiAudit.score >= 60 ? 'medium' : 'low'}">${item.aiAudit.score}分</span>
+                                        </div>
+                                        <div class="ai-audit-comment">${item.aiAudit.aiComment}</div>
+                                    </div>
+                                ` : ''}
                             </div>
                         `).join('')}
                     </div>
                 `;
                 list.appendChild(catSection);
             });
+            
+            // 添加AI审核统计卡片
+            if (summary.aiAudit && summary.aiAudit.totalAudited > 0) {
+                const aiStatsCard = document.createElement('div');
+                aiStatsCard.className = 'ai-stats-card';
+                aiStatsCard.innerHTML = `
+                    <div class="ai-stats-header">
+                        🤖 AI审核统计
+                    </div>
+                    <div class="ai-stats-grid">
+                        <div class="ai-stat-item">
+                            <div class="ai-stat-value">${summary.aiAudit.avgScore}</div>
+                            <div class="ai-stat-label">平均分数</div>
+                        </div>
+                        <div class="ai-stat-item">
+                            <div class="ai-stat-value">${summary.aiAudit.passed}</div>
+                            <div class="ai-stat-label">审核通过</div>
+                        </div>
+                        <div class="ai-stat-item">
+                            <div class="ai-stat-value">${summary.aiAudit.failed}</div>
+                            <div class="ai-stat-label">需要修改</div>
+                        </div>
+                    </div>
+                `;
+                list.insertBefore(aiStatsCard, list.firstChild);
+            }
         }
         
         // Update modal

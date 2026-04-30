@@ -9,6 +9,174 @@ const path = require('path');
 const PORT = 3000;
 
 // ============================================
+// AI 证据审核系统
+// ============================================
+
+// AI 审核规则
+const AI_AUDIT_RULES = {
+  // 图片质量检查
+  imageQuality: {
+    check: (file) => {
+      const issues = [];
+      // 模拟AI检测：检查文件大小判断清晰度
+      if (file.size && file.size < 50 * 1024) {
+        issues.push('图片文件过小，可能不够清晰，请重新拍摄');
+      }
+      if (file.name && file.name.toLowerCase().includes('screenshot') && file.size < 100 * 1024) {
+        issues.push('截图分辨率较低，请放大后重新截图');
+      }
+      return issues;
+    }
+  },
+  
+  // 证据完整性检查
+  completeness: {
+    'contract': (files) => {
+      const issues = [];
+      if (files.length < 1) {
+        issues.push('请上传劳动合同文件');
+      }
+      // 检查是否有签字页
+      const hasSignature = files.some(f => 
+        f.name && (f.name.includes('签字') || f.name.includes('签名') || f.name.includes('盖章'))
+      );
+      if (!hasSignature && files.length > 0) {
+        issues.push('请确保包含签字页或盖章页');
+      }
+      return issues;
+    },
+    'bank_statement': (files) => {
+      const issues = [];
+      if (files.length < 1) {
+        issues.push('请上传银行流水文件');
+      }
+      // 检查文件名是否包含关键词
+      const hasKeyword = files.some(f => 
+        f.name && (f.name.includes('流水') || f.name.includes('工资'))
+      );
+      if (!hasKeyword && files.length > 0) {
+        issues.push('文件名不包含"流水"或"工资"关键词，请确认是否为工资流水');
+      }
+      return issues;
+    },
+    'attendance': (files) => {
+      const issues = [];
+      if (files.length < 1) {
+        issues.push('请上传考勤记录');
+      }
+      return issues;
+    }
+  },
+  
+  // 通用检查
+  general: (evidence) => {
+    const issues = [];
+    
+    // 检查描述是否足够详细
+    if (!evidence.note || evidence.note.length < 10) {
+      if (evidence.required) {
+        issues.push('【建议】补充更详细的说明，如：文件页数、关键信息等');
+      }
+    }
+    
+    // 检查是否有文件
+    if (!evidence.files || evidence.files.length === 0) {
+      if (evidence.status === 'collected') {
+        issues.push('标记为已收集但未上传文件，请上传相关材料');
+      }
+    }
+    
+    return issues;
+  }
+};
+
+// AI 自动审核函数
+function aiAuditEvidence(evidence) {
+  const auditResult = {
+    passed: true,
+    score: 100,
+    issues: [],
+    suggestions: [],
+    aiReviewed: true,
+    reviewedAt: new Date().toISOString()
+  };
+  
+  // 1. 通用检查
+  const generalIssues = AI_AUDIT_RULES.general(evidence);
+  auditResult.issues.push(...generalIssues);
+  
+  // 2. 文件质量检查
+  if (evidence.files && evidence.files.length > 0) {
+    evidence.files.forEach(file => {
+      const qualityIssues = AI_AUDIT_RULES.imageQuality.check(file);
+      auditResult.issues.push(...qualityIssues);
+    });
+    
+    // 3. 特定证据类型检查
+    const specificCheck = AI_AUDIT_RULES.completeness[evidence.id];
+    if (specificCheck) {
+      const completenessIssues = specificCheck(evidence.files);
+      auditResult.issues.push(...completenessIssues);
+    }
+  }
+  
+  // 4. 计算分数
+  if (auditResult.issues.length > 0) {
+    const criticalIssues = auditResult.issues.filter(i => 
+      !i.startsWith('【建议】')
+    ).length;
+    const suggestionIssues = auditResult.issues.filter(i => 
+      i.startsWith('【建议】')
+    ).length;
+    
+    // 严重问题扣20分，建议扣5分
+    auditResult.score = Math.max(0, 100 - criticalIssues * 20 - suggestionIssues * 5);
+  }
+  
+  // 5. 判断是否通过
+  auditResult.passed = auditResult.score >= 70 && 
+    !auditResult.issues.some(i => 
+      i.includes('请重新') || 
+      i.includes('请上传') || 
+      i.includes('标记为已收集但未上传')
+    );
+  
+  // 6. 生成AI审核意见
+  if (auditResult.issues.length > 0) {
+    auditResult.aiComment = generateAIComment(auditResult.issues, evidence);
+  } else {
+    auditResult.aiComment = '✅ AI审核通过！证据清晰完整，符合要求。';
+  }
+  
+  return auditResult;
+}
+
+// 生成AI审核意见
+function generateAIComment(issues, evidence) {
+  const criticalIssues = issues.filter(i => !i.startsWith('【建议】'));
+  const suggestions = issues.filter(i => i.startsWith('【建议】'));
+  
+  let comment = '';
+  
+  if (criticalIssues.length > 0) {
+    comment += `⚠️ 发现问题（${criticalIssues.length}项）：\n`;
+    criticalIssues.forEach((issue, index) => {
+      comment += `${index + 1}. ${issue}\n`;
+    });
+    comment += '\n';
+  }
+  
+  if (suggestions.length > 0) {
+    comment += `💡 优化建议（${suggestions.length}项）：\n`;
+    suggestions.forEach((suggestion, index) => {
+      comment += `${index + 1}. ${suggestion.replace('【建议】', '')}\n`;
+    });
+  }
+  
+  return comment.trim();
+}
+
+// ============================================
 // 劳动纠纷标准证据清单模板 (来自多维表格)
 // ============================================
 
@@ -654,7 +822,7 @@ async function handleRequest(req, res) {
       const requiredCollected = evidenceList.filter(e => e.required && e.status === 'collected').length;
       const unqualified = evidenceList.filter(e => e.status === 'unqualified').length;
       
-      const isComplete = requiredCollected >= required;
+      const isComplete = requiredCollected >= required && unqualified === 0;
       const issues = [];
       
       if (!isComplete) {
@@ -665,6 +833,16 @@ async function handleRequest(req, res) {
       if (unqualified > 0) {
         issues.push(`${unqualified} 项证据不合格，需要重新上传`);
       }
+      
+      // AI审核统计
+      const aiAuditStats = {
+        totalAudited: evidenceList.filter(e => e.aiAudit).length,
+        passed: evidenceList.filter(e => e.aiAudit && e.aiAudit.passed).length,
+        failed: evidenceList.filter(e => e.aiAudit && !e.aiAudit.passed).length,
+        avgScore: evidenceList.filter(e => e.aiAudit).length > 0 
+          ? Math.round(evidenceList.filter(e => e.aiAudit).reduce((sum, e) => sum + e.aiAudit.score, 0) / evidenceList.filter(e => e.aiAudit).length)
+          : 0
+      };
       
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({
@@ -680,6 +858,7 @@ async function handleRequest(req, res) {
           percent: Math.round((collected / evidenceList.length) * 100) || 0,
           isComplete,
           issues,
+          aiAudit: aiAuditStats
         }
       }));
       return;
@@ -721,6 +900,17 @@ async function handleRequest(req, res) {
       if (note !== undefined) evidence.note = note;
       if (files) evidence.files = files;
       evidence.updatedAt = new Date().toISOString();
+      
+      // 触发AI自动审核
+      if (status === 'collected' || (files && files.length > 0)) {
+        const auditResult = aiAuditEvidence(evidence);
+        evidence.aiAudit = auditResult;
+        
+        // 如果AI审核不通过，自动标记为不合格
+        if (!auditResult.passed && status === 'collected') {
+          evidence.status = 'unqualified';
+        }
+      }
       
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ success: true, evidence }));
@@ -913,6 +1103,203 @@ async function handleRequest(req, res) {
         res.end(JSON.stringify({ error: '飞书登录处理失败' }));
         return;
       }
+    }
+    
+    // ========== AI 审核接口 ==========
+    
+    // 获取AI审核结果（客户）
+    if (pathname === '/api/client/audit' && req.method === 'GET') {
+      const { caseId, phone, evidenceId } = query;
+      
+      if (!caseId || !phone || !evidenceId) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: '参数不完整' }));
+        return;
+      }
+      
+      const client = db.clients[phone];
+      if (!client || !client.cases.includes(caseId)) {
+        res.writeHead(403, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: '无权访问此案件' }));
+        return;
+      }
+      
+      const evidenceList = db.evidence[caseId];
+      if (!evidenceList) {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: '证据清单不存在' }));
+        return;
+      }
+      
+      const evidence = evidenceList.find(e => e.id === evidenceId);
+      if (!evidence) {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: '证据项不存在' }));
+        return;
+      }
+      
+      // 如果还没有AI审核结果，自动触发审核
+      if (!evidence.aiAudit) {
+        evidence.aiAudit = aiAuditEvidence(evidence);
+      }
+      
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        success: true,
+        audit: evidence.aiAudit
+      }));
+      return;
+    }
+    
+    // 获取AI审核结果（律师）
+    if (pathname === '/api/lawyer/audit' && req.method === 'GET') {
+      const { lawyer, caseId, evidenceId } = query;
+      
+      if (!lawyer || !db.lawyers[lawyer]) {
+        res.writeHead(401, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: '未授权' }));
+        return;
+      }
+      
+      if (!db.cases[caseId]) {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: '案件不存在' }));
+        return;
+      }
+      
+      // 检查案件是否属于该律师
+      if (db.cases[caseId].lawyer !== lawyer) {
+        res.writeHead(403, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: '无权查看此案件的审核结果' }));
+        return;
+      }
+      
+      const evidenceList = db.evidence[caseId];
+      if (!evidenceList) {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: '证据清单不存在' }));
+        return;
+      }
+      
+      // 如果指定了evidenceId，返回单个证据的审核结果
+      if (evidenceId) {
+        const evidence = evidenceList.find(e => e.id === evidenceId);
+        if (!evidence) {
+          res.writeHead(404, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: '证据项不存在' }));
+          return;
+        }
+        
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          success: true,
+          audit: evidence.aiAudit || null
+        }));
+        return;
+      }
+      
+      // 否则返回所有证据的审核统计
+      const auditStats = {
+        total: evidenceList.length,
+        audited: evidenceList.filter(e => e.aiAudit).length,
+        passed: evidenceList.filter(e => e.aiAudit && e.aiAudit.passed).length,
+        failed: evidenceList.filter(e => e.aiAudit && !e.aiAudit.passed).length,
+        pending: evidenceList.filter(e => !e.aiAudit).length,
+        avgScore: evidenceList.filter(e => e.aiAudit).length > 0 
+          ? Math.round(evidenceList.filter(e => e.aiAudit).reduce((sum, e) => sum + (e.aiAudit.score || 0), 0) / evidenceList.filter(e => e.aiAudit).length)
+          : 0,
+        issues: evidenceList
+          .filter(e => e.aiAudit && e.aiAudit.issues.length > 0)
+          .map(e => ({
+            evidenceName: e.name,
+            issues: e.aiAudit.issues,
+            score: e.aiAudit.score
+          }))
+      };
+      
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        success: true,
+        stats: auditStats
+      }));
+      return;
+    }
+    
+    // 手动触发AI审核（律师）
+    if (pathname === '/api/lawyer/audit' && req.method === 'POST') {
+      const body = await parseBody(req);
+      const { lawyer, caseId, evidenceId } = body;
+      
+      if (!lawyer || !db.lawyers[lawyer]) {
+        res.writeHead(401, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: '未授权' }));
+        return;
+      }
+      
+      if (!db.cases[caseId]) {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: '案件不存在' }));
+        return;
+      }
+      
+      // 检查案件是否属于该律师
+      if (db.cases[caseId].lawyer !== lawyer) {
+        res.writeHead(403, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: '无权审核此案件' }));
+        return;
+      }
+      
+      const evidenceList = db.evidence[caseId];
+      if (!evidenceList) {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: '证据清单不存在' }));
+        return;
+      }
+      
+      // 如果指定了evidenceId，只审核单个证据
+      if (evidenceId) {
+        const evidence = evidenceList.find(e => e.id === evidenceId);
+        if (!evidence) {
+          res.writeHead(404, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: '证据项不存在' }));
+          return;
+        }
+        
+        evidence.aiAudit = aiAuditEvidence(evidence);
+        
+        // 如果审核不通过，自动标记为不合格
+        if (!evidence.aiAudit.passed && evidence.status === 'collected') {
+          evidence.status = 'unqualified';
+        }
+        
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({
+          success: true,
+          audit: evidence.aiAudit,
+          evidence
+        }));
+        return;
+      }
+      
+      // 否则审核所有证据
+      let auditedCount = 0;
+      evidenceList.forEach(evidence => {
+        evidence.aiAudit = aiAuditEvidence(evidence);
+        auditedCount++;
+        
+        // 如果审核不通过，自动标记为不合格
+        if (!evidence.aiAudit.passed && evidence.status === 'collected') {
+          evidence.status = 'unqualified';
+        }
+      });
+      
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        success: true,
+        message: `已完成 ${auditedCount} 项证据的AI审核`,
+        auditedCount
+      }));
+      return;
     }
     
     // ========== 赔偿计算接口 ==========
