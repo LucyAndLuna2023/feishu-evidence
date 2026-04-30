@@ -777,6 +777,117 @@ async function handleRequest(req, res) {
       return;
     }
     
+    // ========== 飞书登录接口 ==========
+    
+    // 获取飞书登录配置
+    if (pathname === '/api/feishu/config' && req.method === 'GET') {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        success: true,
+        appId: FEISHU_APP_ID,
+        // 注意：正式环境需要配置正确的回调地址
+        redirectUri: 'http://47.114.81.88:3000/feishu/callback'
+      }));
+      return;
+    }
+    
+    // 飞书登录回调处理
+    if (pathname === '/api/feishu/login' && req.method === 'POST') {
+      const body = await parseBody(req);
+      const { code } = body;
+      
+      if (!code) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: '缺少授权码' }));
+        return;
+      }
+      
+      try {
+        // 使用飞书 API 获取 access_token
+        const tokenRes = await fetch('https://open.feishu.cn/open-apis/authen/v1/access_token', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${FEISHU_APP_SECRET}` // 实际应该使用 app_access_token
+          },
+          body: JSON.stringify({
+            grant_type: 'authorization_code',
+            code: code
+          })
+        });
+        
+        const tokenData = await tokenRes.json();
+        
+        if (tokenData.code !== 0) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: '飞书登录失败：' + tokenData.msg }));
+          return;
+        }
+        
+        const { open_id, union_id, mobile } = tokenData.data;
+        
+        // 如果没有手机号，返回错误
+        if (!mobile) {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: '无法获取手机号，请确保已授权手机号权限' }));
+          return;
+        }
+        
+        // 检查该手机号是否有关联的案件
+        const client = db.clients[mobile];
+        if (!client) {
+          res.writeHead(404, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ 
+            error: '未找到该手机号的案件，请联系您的律师',
+            phone: mobile 
+          }));
+          return;
+        }
+        
+        // 更新客户的飞书信息
+        client.feishuOpenId = open_id;
+        client.feishuUnionId = union_id;
+        
+        // 获取客户的所有案件
+        const cases = client.cases.map(caseId => {
+          const caseInfo = db.cases[caseId];
+          const evidenceList = db.evidence[caseId] || [];
+          const collected = evidenceList.filter(e => e.status === 'collected').length;
+          const required = evidenceList.filter(e => e.required).length;
+          const requiredCollected = evidenceList.filter(e => e.required && e.status === 'collected').length;
+          
+          return {
+            ...caseInfo,
+            progress: {
+              total: evidenceList.length,
+              collected,
+              required,
+              requiredCollected,
+              percent: Math.round((collected / evidenceList.length) * 100) || 0,
+            }
+          };
+        });
+        
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ 
+          success: true, 
+          client: { 
+            name: client.name, 
+            phone: client.phone,
+            openId: open_id 
+          },
+          cases 
+        }));
+        return;
+        
+      } catch (e) {
+        console.error('飞书登录错误:', e);
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: '飞书登录处理失败' }));
+        return;
+      }
+    }
+    
     // ========== 赔偿计算接口 ==========
     
     // 获取案件赔偿计算

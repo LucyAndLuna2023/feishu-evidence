@@ -432,6 +432,50 @@
             color: #667eea;
             text-decoration: none;
         }
+        
+        /* Feishu Login Button */
+        .feishu-login-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            width: 100%;
+            padding: 14px;
+            border: 1px solid #00D26A;
+            border-radius: 10px;
+            background: white;
+            color: #00D26A;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 15px;
+        }
+        .feishu-login-btn:hover {
+            background: #f0fff5;
+        }
+        .feishu-login-btn img {
+            width: 24px;
+            height: 24px;
+        }
+        
+        .divider {
+            display: flex;
+            align-items: center;
+            text-align: center;
+            margin: 20px 0;
+            color: #999;
+            font-size: 14px;
+        }
+        .divider::before,
+        .divider::after {
+            content: '';
+            flex: 1;
+            border-bottom: 1px solid #ddd;
+        }
+        .divider span {
+            padding: 0 15px;
+        }
     </style>
 </head>
 <body>
@@ -440,10 +484,24 @@
         <div class="login-page" id="login-page">
             <div class="login-title">
                 <h2>📋 证据收集清单</h2>
-                <p>请输入您的手机号查看案件证据清单</p>
+                <p>请使用飞书登录查看案件证据清单</p>
             </div>
+            
+            <!-- 飞书登录按钮 -->
+            <button class="feishu-login-btn" id="feishu-login-btn">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect width="24" height="24" rx="6" fill="#00D26A"/>
+                    <path d="M12 6L6 10V14L12 18L18 14V10L12 6Z" fill="white"/>
+                </svg>
+                飞书一键登录
+            </button>
+            
+            <div class="divider">
+                <span>或</span>
+            </div>
+            
             <div class="form-group">
-                <label class="form-label">手机号</label>
+                <label class="form-label">手机号登录</label>
                 <input type="tel" class="form-input" id="phone-input" placeholder="请输入11位手机号" maxlength="11">
             </div>
             <button class="btn btn-primary" id="login-btn">查看我的案件</button>
@@ -589,6 +647,14 @@
         
         // Init
         document.addEventListener('DOMContentLoaded', () => {
+            // 先检查是否是飞书登录回调
+            checkFeishuCallback();
+            
+            // 如果不是回调，检查本地存储的登录状态
+            if (!currentPhone && localStorage.getItem('client_phone')) {
+                currentPhone = localStorage.getItem('client_phone');
+            }
+            
             if (currentPhone) {
                 login(currentPhone);
             }
@@ -610,6 +676,70 @@
             }
             login(phone);
         });
+        
+        // 飞书登录按钮
+        document.getElementById('feishu-login-btn').addEventListener('click', () => {
+            // 飞书授权登录
+            const appId = 'cli_a97a9035b5395cc4';
+            const redirectUri = encodeURIComponent('http://47.114.81.88:3000/feishu/callback');
+            const scope = 'contact:user.phone:readonly';
+            
+            // 跳转到飞书授权页面
+            const authUrl = `https://open.feishu.cn/open-apis/authen/v1/index?app_id=${appId}&redirect_uri=${redirectUri}&scope=${scope}`;
+            window.location.href = authUrl;
+        });
+        
+        // 检查是否是飞书登录回调
+        function checkFeishuCallback() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const code = urlParams.get('code');
+            
+            if (code) {
+                // 使用code登录
+                feishuLogin(code);
+                // 清除URL参数
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+        }
+        
+        async function feishuLogin(code) {
+            try {
+                showToast('正在登录...');
+                
+                const res = await fetch(API_BASE + '/api/feishu/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code })
+                });
+                
+                const data = await res.json();
+                if (data.success) {
+                    currentPhone = data.client.phone;
+                    localStorage.setItem('client_phone', data.client.phone);
+                    localStorage.setItem('feishu_open_id', data.client.openId);
+                    document.getElementById('user-name').textContent = data.client.name;
+                    
+                    const select = document.getElementById('case-select');
+                    select.innerHTML = '<option value="">选择案件</option>' +
+                        data.cases.map(c => `<option value="${c.caseId}">${c.caseId} - ${c.clientName}</option>`).join('');
+                    
+                    document.getElementById('login-page').style.display = 'none';
+                    document.getElementById('main-content').classList.add('show');
+                    
+                    if (data.cases.length > 0) {
+                        select.value = data.cases[0].caseId;
+                        loadEvidence(data.cases[0].caseId);
+                    }
+                    
+                    showToast('飞书登录成功');
+                } else {
+                    showToast(data.error || '登录失败');
+                }
+            } catch (e) {
+                console.error('飞书登录失败:', e);
+                showToast('飞书登录失败，请使用手机号登录');
+            }
+        }
         
         async function login(phone) {
             try {
