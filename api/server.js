@@ -8,38 +8,228 @@ const fs = require('fs');
 const path = require('path');
 const PORT = 3000;
 
-// 劳动纠纷标准证据清单模板
+// ============================================
+// 劳动纠纷标准证据清单模板 (来自多维表格)
+// ============================================
+
 const EVIDENCE_TEMPLATES = {
+  // 通用模板 - 适用于所有劳动纠纷案件
+  general: [
+    // 劳动关系类
+    {
+      id: 'contract',
+      name: '劳动合同',
+      category: '劳动关系',
+      required: true,
+      description: '请上传劳动合同原件照片或扫描件（PDF或图片格式均可）',
+      tips: ['如果有多份劳动合同，请全部上传', '纸质合同可拍照，电子合同可截图']
+    },
+    {
+      id: 'work_card',
+      name: '工作证、工牌、门禁卡',
+      category: '劳动关系',
+      required: true,
+      description: '请上传工作证、工牌、门禁卡、名片、有单位名称的工作服照片',
+      tips: ['可以手机拍照，只要能看清公司名称和您的信息即可', '多张照片请整理到一个文件夹后上传']
+    },
+    {
+      id: 'performance',
+      name: '绩效文件',
+      category: '劳动关系',
+      required: false,
+      description: '如有绩效相关文件截图或PDF，请上传',
+      tips: ['绩效考核结果通知', '公司发送的绩效相关邮件']
+    },
+    {
+      id: 'employee_handbook',
+      name: '员工手册签收',
+      category: '劳动关系',
+      required: false,
+      description: '请说明是否签收过《员工手册》或公司规章制度',
+      tips: ['在备注中填写：是否签收过？（是/否）']
+    },
+    // 工资福利类
+    {
+      id: 'bank_statement',
+      name: '银行流水',
+      category: '工资福利',
+      required: true,
+      description: '请在银行APP下载或导出最近12个月工资流水',
+      tips: ['必须清晰显示：付款方公司名称、账号、标注"工资"字样', '导出格式：PDF或截图均可', '流水需显示"工资"关键词，如果不是工资发放，请备注说明']
+    },
+    {
+      id: 'pay_slip',
+      name: '工资条',
+      category: '工资福利',
+      required: false,
+      description: '如有工资条，请上传照片或电子版',
+      tips: ['纸质工资条可拍照，电子工资条可截图', '如有签字或盖章的工资条，请重点上传']
+    },
+    {
+      id: 'salary_confirmation',
+      name: '薪资确认文件',
+      category: '工资福利',
+      required: false,
+      description: '如有岗位职责说明、调薪通知、奖金/提成计算说明等，请上传',
+      tips: ['邮件请截图或导出为PDF']
+    },
+    {
+      id: 'social_insurance',
+      name: '社保、公积金缴费记录',
+      category: '工资福利',
+      required: true,
+      description: '请上传社保和公积金缴费记录',
+      tips: ['在当地社保局/公积金管理中心网站注册后下载', '或在支付宝/微信城市服务中查询并截图', '需显示：公司名称、缴费基数、缴费金额', '请提供最近12个月的记录', '如公司未足额缴纳，请重点标注']
+    },
+    // 考勤加班类
+    {
+      id: 'attendance',
+      name: '考勤记录',
+      category: '考勤加班',
+      required: true,
+      description: '请上传考勤记录截图或照片',
+      tips: ['钉钉/企业微信月度打卡汇总截图', '考勤机照片（如有）', '考勤表/排班表（如公司有）', '需能看清日期和上下班时间', '如有加班记录，请一并提供']
+    },
+    {
+      id: 'overtime_approval',
+      name: '加班审批记录',
+      category: '考勤加班',
+      required: false,
+      description: '如有加班申请记录截图或邮件，请上传',
+      tips: ['需显示"审批通过"']
+    },
+    {
+      id: 'overtime_chat',
+      name: '加班沟通记录',
+      category: '考勤加班',
+      required: false,
+      description: '如有领导指派加班的沟通记录，请截图上传',
+      tips: ['微信/钉钉消息截图（显示领导在非工作时间指派工作）']
+    },
+    {
+      id: 'work_deliverables',
+      name: '工作成果记录',
+      category: '考勤加班',
+      required: false,
+      description: '如有非工作时间完成的工作成果，请上传',
+      tips: ['文档/表格/PPT等文件（查看文件属性中的创建/修改时间）']
+    },
+    // 视听资料类
+    {
+      id: 'work_communication',
+      name: '工作群截图、工作邮件',
+      category: '视听资料',
+      required: false,
+      description: '如有工作微信群/钉钉群的聊天记录，请截图上传',
+      tips: ['需包含群名称、您的昵称、与领导/同事的沟通内容', '重要消息请单独截图保存']
+    },
+    // 协议文件类
+    {
+      id: 'agreements',
+      name: '竞业限制协议等',
+      category: '协议文件',
+      required: false,
+      description: '如有签署过竞业限制协议/保密协议/培训服务期协议，请上传原件',
+      tips: ['如未签署过，请在备注中注明"未签署"']
+    },
+    // 其他
+    {
+      id: 'other_materials',
+      name: '其他重要材料',
+      category: '其他',
+      required: false,
+      description: '请上传其他对您有利的材料',
+      tips: ['请假审批记录（可证明您的出勤情况）', '表彰证书、奖状、优秀员工通知等']
+    }
+  ],
+  
+  // 违法解除劳动合同 - 额外证据
   illegal_termination: [
-    { id: 'contract', name: '劳动合同', required: true, description: '完整劳动合同文本' },
-    { id: 'salary_flow', name: '工资流水', required: true, description: '近12个月银行工资流水' },
-    { id: 'social_insurance', name: '社保缴纳记录', required: true, description: '社保局打印的缴费记录' },
-    { id: 'termination_notice', name: '解除/终止劳动合同通知书', required: true, description: '公司出具的解除通知' },
-    { id: 'attendance', name: '考勤记录', required: false, description: '打卡记录或考勤表' },
-    { id: 'work_chat', name: '工作沟通记录', required: false, description: '微信/钉钉/邮件等工作沟通' },
-    { id: 'company_rules', name: '公司规章制度', required: false, description: '员工手册等制度文件' },
-    { id: 'performance', name: '绩效考核记录', required: false, description: '绩效评估表等' },
+    {
+      id: 'termination_notice',
+      name: '解除/终止劳动合同通知书',
+      category: '离职相关',
+      required: true,
+      description: '请上传公司出具的解除/终止劳动合同通知书',
+      tips: ['必须包含：公司盖章、解除日期、解除理由', '如为口头通知，请提供录音或事后要求公司出具书面通知的沟通记录']
+    },
+    {
+      id: 'termination_chat',
+      name: '解除沟通记录',
+      category: '离职相关',
+      required: false,
+      description: '如有与HR或领导沟通解除事宜的记录，请上传',
+      tips: ['微信/钉钉/邮件等沟通记录', '电话录音请转文字后上传']
+    }
   ],
+  
+  // 拖欠工资
   unpaid_wages: [
-    { id: 'contract', name: '劳动合同', required: true, description: '约定工资标准的合同' },
-    { id: 'salary_flow', name: '工资流水', required: true, description: '显示拖欠的银行流水' },
-    { id: 'pay_slip', name: '工资条', required: true, description: '公司发放的工资条' },
-    { id: 'owe_proof', name: '欠薪证明', required: false, description: '公司确认的欠条/承诺书' },
-    { id: 'attendance', name: '考勤记录', required: true, description: '证明实际工作的考勤' },
+    {
+      id: 'owe_proof',
+      name: '欠薪证明',
+      category: '工资福利',
+      required: false,
+      description: '如有公司确认的欠条、承诺书等，请上传',
+      tips: ['需有公司盖章或负责人签字']
+    }
   ],
+  
+  // 未休年假
   unpaid_leave: [
-    { id: 'contract', name: '劳动合同', required: true, description: '劳动关系证明' },
-    { id: 'entry_proof', name: '入职时间证明', required: true, description: '证明工作年限' },
-    { id: 'leave_record', name: '休假记录', required: true, description: '公司系统休假记录' },
-    { id: 'salary_proof', name: '日工资标准证明', required: true, description: '计算年假工资的基数' },
+    {
+      id: 'entry_proof',
+      name: '入职时间证明',
+      category: '劳动关系',
+      required: true,
+      description: '请提供证明入职时间的材料',
+      tips: ['劳动合同起始日期页', '社保缴费记录起始时间', '入职offer']
+    },
+    {
+      id: 'leave_record',
+      name: '休假记录',
+      category: '考勤加班',
+      required: true,
+      description: '请上传公司系统休假记录',
+      tips: ['钉钉/企业微信休假申请记录', '年假使用情况截图']
+    }
   ],
+  
+  // 工伤赔偿
   work_injury: [
-    { id: 'contract', name: '劳动合同', required: true, description: '劳动关系证明' },
-    { id: 'injury_report', name: '工伤认定书', required: true, description: '人社局工伤认定' },
-    { id: 'medical_records', name: '医疗记录', required: true, description: '诊断证明、病历、发票' },
-    { id: 'disability', name: '伤残鉴定', required: true, description: '劳动能力鉴定结论' },
-    { id: 'salary_flow', name: '工资流水', required: true, description: '计算赔偿基数' },
-  ],
+    {
+      id: 'injury_report',
+      name: '工伤认定书',
+      category: '工伤认定',
+      required: true,
+      description: '请上传人社局出具的工伤认定书',
+      tips: ['工伤认定决定书原件']
+    },
+    {
+      id: 'medical_records',
+      name: '医疗记录',
+      category: '工伤认定',
+      required: true,
+      description: '请上传完整的医疗记录',
+      tips: ['诊断证明、病历、出院小结', '医疗费用发票及清单', '影像学检查报告（X光、CT、MRI等）']
+    },
+    {
+      id: 'disability_assessment',
+      name: '伤残鉴定',
+      category: '工伤认定',
+      required: true,
+      description: '请上传劳动能力鉴定结论',
+      tips: ['劳动能力鉴定结论书', '如有复查鉴定，请一并提供']
+    },
+    {
+      id: 'accident_report',
+      name: '事故报告',
+      category: '工伤认定',
+      required: false,
+      description: '如有事故报告或报警记录，请上传',
+      tips: ['公司事故调查报告', '公安报警记录', '现场照片']
+    }
+  ]
 };
 
 // 数据存储
@@ -65,11 +255,21 @@ const db = {
   },
 };
 
-// 初始化证据清单
+// 初始化证据清单 - 合并通用模板+案件特定模板
 function initEvidenceList(caseId, caseType) {
-  const template = EVIDENCE_TEMPLATES[caseType] || EVIDENCE_TEMPLATES.illegal_termination;
-  return template.map(item => ({
+  // 获取通用模板
+  let baseList = JSON.parse(JSON.stringify(EVIDENCE_TEMPLATES.general));
+  
+  // 根据案件类型添加特定证据
+  if (caseType && EVIDENCE_TEMPLATES[caseType]) {
+    const specificList = JSON.parse(JSON.stringify(EVIDENCE_TEMPLATES[caseType]));
+    baseList = [...baseList, ...specificList];
+  }
+  
+  // 添加状态字段
+  return baseList.map((item, index) => ({
     ...item,
+    id: item.id || `ev_${index}`,
     status: 'pending',
     files: [],
     note: '',

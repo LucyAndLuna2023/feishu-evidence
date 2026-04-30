@@ -180,18 +180,46 @@
             gap: 8px;
         }
         
+        /* Category Section */
+        .category-section {
+            margin-bottom: 20px;
+        }
+        .category-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 15px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 10px 10px 0 0;
+            font-weight: 500;
+        }
+        .category-count {
+            font-size: 12px;
+            opacity: 0.9;
+        }
+        .category-items {
+            background: #f9f9f9;
+            border-radius: 0 0 10px 10px;
+            padding: 10px;
+        }
+        
         /* Evidence Item */
         .evidence-item {
-            background: #f9f9f9;
-            border-radius: 12px;
+            background: white;
+            border-radius: 10px;
             padding: 15px;
-            margin-bottom: 12px;
+            margin-bottom: 10px;
             border: 2px solid transparent;
             transition: all 0.3s;
+            cursor: pointer;
         }
-        .evidence-item:hover { border-color: #ddd; }
-        .evidence-item.collected { border-color: #4caf50; background: #f1f8e9; }
-        .evidence-item.unqualified { border-color: #f44336; background: #ffebee; }
+        .evidence-item:hover { 
+            border-color: #667eea;
+            box-shadow: 0 2px 8px rgba(102, 126, 234, 0.15);
+        }
+        .evidence-item.collected { border-color: #4caf50; }
+        .evidence-item.unqualified { border-color: #f44336; background: #fff5f5; }
         
         .evidence-header {
             display: flex;
@@ -206,16 +234,21 @@
             display: flex;
             align-items: center;
             gap: 6px;
+            flex-wrap: wrap;
         }
         .evidence-required {
             color: #f44336;
-            font-size: 12px;
+            font-size: 11px;
+            background: #ffebee;
+            padding: 2px 6px;
+            border-radius: 4px;
         }
         .evidence-status {
             padding: 4px 10px;
             border-radius: 20px;
             font-size: 11px;
             font-weight: 500;
+            white-space: nowrap;
         }
         .evidence-status.pending {
             background: #e0e0e0;
@@ -237,6 +270,22 @@
             line-height: 1.5;
         }
         
+        .evidence-tips {
+            background: #f0f4ff;
+            border-radius: 8px;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+        .tip-item {
+            font-size: 12px;
+            color: #667eea;
+            margin-bottom: 4px;
+            line-height: 1.4;
+        }
+        .tip-item:last-child {
+            margin-bottom: 0;
+        }
+        
         .evidence-files {
             display: flex;
             flex-wrap: wrap;
@@ -244,62 +293,20 @@
             margin-bottom: 10px;
         }
         .file-tag {
-            background: white;
+            background: #e8eaf6;
             padding: 6px 10px;
             border-radius: 6px;
             font-size: 12px;
             color: #333;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-        .file-tag button {
-            background: none;
-            border: none;
-            color: #999;
-            cursor: pointer;
-            font-size: 14px;
-            padding: 0;
-            width: 16px;
-            height: 16px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
         }
         
         .evidence-note {
             font-size: 12px;
             color: #666;
-            margin-bottom: 10px;
             padding: 8px;
-            background: white;
-            border-radius: 6px;
-        }
-        
-        .evidence-actions {
-            display: flex;
-            gap: 8px;
-        }
-        .evidence-actions button {
-            flex: 1;
-            padding: 8px;
-            border: 1px solid #ddd;
-            border-radius: 6px;
-            background: white;
-            font-size: 12px;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .evidence-actions button:hover {
             background: #f5f5f5;
-        }
-        .evidence-actions .btn-collect {
-            background: #4caf50;
-            color: white;
-            border-color: #4caf50;
-        }
-        .evidence-actions .btn-collect:hover {
-            background: #45a049;
+            border-radius: 6px;
+            border-left: 3px solid #667eea;
         }
         
         /* Add Custom Evidence */
@@ -509,8 +516,9 @@
                 <button class="modal-close" id="modal-close">×</button>
             </div>
             <div id="modal-body">
-                <p style="margin-bottom: 15px; color: #666; font-size: 14px;">
-                    证据: <strong id="modal-evidence-name"></strong>
+                <p style="margin-bottom: 5px; color: #667eea; font-size: 12px;" id="modal-category">--</p>
+                <p style="margin-bottom: 15px; color: #333; font-size: 16px; font-weight: 600;">
+                    <span id="modal-evidence-name"></span>
                 </p>
                 <div style="margin-bottom: 15px;">
                     <label style="display: block; font-size: 14px; margin-bottom: 8px;">状态</label>
@@ -522,13 +530,17 @@
                 </div>
                 <label style="display: block; font-size: 14px; margin-bottom: 8px;">备注说明</label>
                 <textarea class="note-input" id="note-input" placeholder="如有需要说明的情况请在此填写..."></textarea>
-                <label style="display: block; font-size: 14px; margin-bottom: 8px;">上传材料</label>
+                <label style="display: block; font-size: 14px; margin-bottom: 8px;">已上传材料</label>
+                <div id="file-list" style="margin-bottom: 15px;"></div>
+                <label style="display: block; font-size: 14px; margin-bottom: 8px;">添加新材料</label>
                 <div class="upload-area" id="upload-area">
                     <div class="upload-icon">📤</div>
                     <div class="upload-text">点击上传图片或文件</div>
                 </div>
-                <div id="file-list" style="margin-bottom: 15px;"></div>
-                <button class="btn btn-primary" id="save-btn">保存</button>
+                <div style="display: flex; gap: 10px; margin-top: 20px;">
+                    <button class="btn btn-primary" id="save-btn" style="flex: 1;">保存</button>
+                    <button class="btn" id="delete-evidence-btn" style="flex: 1; background: #ffebee; color: #c62828; display: none;">删除</button>
+                </div>
             </div>
         </div>
     </div>
@@ -565,6 +577,7 @@
         let currentPhone = localStorage.getItem('client_phone');
         let currentCase = null;
         let currentEvidence = null;
+        let currentEvidenceList = [];
         let selectedStatus = 'collected';
         let tempFiles = [];
         
@@ -658,6 +671,7 @@
                 
                 if (data.success) {
                     currentCase = caseId;
+                    currentEvidenceList = data.evidence || [];
                     renderEvidence(data);
                 } else {
                     showToast(data.error || '加载失败');
@@ -667,6 +681,7 @@
             }
         }
         
+        // Render evidence - 按类别分组
         function renderEvidence(data) {
             const { evidence, summary } = data;
             
@@ -691,51 +706,88 @@
             alertBox.style.display = 'flex';
             
             document.getElementById('evidence-section').style.display = 'block';
-            const list = document.getElementById('evidence-list');
             
-            list.innerHTML = evidence.map(item => `
-                <div class="evidence-item ${item.status}">
-                    <div class="evidence-header">
-                        <div class="evidence-name">
-                            ${item.name}
-                            ${item.required ? '<span class="evidence-required">*必填</span>' : ''}
-                            ${item.isCustom ? '<span style="color: #667eea; font-size: 11px;">(自定义)</span>' : ''}
-                        </div>
-                        <span class="evidence-status ${item.status}">${statusNames[item.status]}</span>
+            // 按类别分组
+            const categories = {};
+            evidence.forEach(item => {
+                const cat = item.category || '其他';
+                if (!categories[cat]) categories[cat] = [];
+                categories[cat].push(item);
+            });
+            
+            // 类别排序
+            const catOrder = ['劳动关系', '工资福利', '考勤加班', '离职相关', '视听资料', '协议文件', '工伤认定', '其他'];
+            
+            const list = document.getElementById('evidence-list');
+            list.innerHTML = '';
+            
+            catOrder.forEach(catName => {
+                if (!categories[catName]) return;
+                const catItems = categories[catName];
+                
+                const catSection = document.createElement('div');
+                catSection.className = 'category-section';
+                catSection.innerHTML = `
+                    <div class="category-header">
+                        <span class="category-name">${catName}</span>
+                        <span class="category-count">${catItems.filter(i => i.status === 'collected').length}/${catItems.length}</span>
                     </div>
-                    <div class="evidence-desc">${item.description}</div>
-                    ${item.files && item.files.length > 0 ? `
-                        <div class="evidence-files">
-                            ${item.files.map(f => `
-                                <div class="file-tag">
-                                    📎 ${f.name}
+                    <div class="category-items">
+                        ${catItems.map(item => `
+                            <div class="evidence-item ${item.status}" onclick="openUpdateModal('${item.id}')">
+                                <div class="evidence-header">
+                                    <div class="evidence-name">
+                                        ${item.name}
+                                        ${item.required ? '<span class="evidence-required">*必填</span>' : ''}
+                                        ${item.isCustom ? '<span style="color: #667eea; font-size: 11px;">(自定义)</span>' : ''}
+                                    </div>
+                                    <span class="evidence-status ${item.status}">${statusNames[item.status]}</span>
                                 </div>
-                            `).join('')}
-                        </div>
-                    ` : ''}
-                    ${item.note ? `<div class="evidence-note">💬 ${item.note}</div>` : ''}
-                    <div class="evidence-actions">
-                        <button class="btn-collect" onclick="openUpdateModal('${item.id}')">更新状态</button>
-                        ${item.isCustom ? `<button onclick="deleteEvidence('${item.id}')" style="color: #f44336;">删除</button>` : ''}
+                                <div class="evidence-desc">${item.description}</div>
+                                ${item.tips && item.tips.length > 0 ? `
+                                    <div class="evidence-tips">
+                                        ${item.tips.map(t => `<div class="tip-item">💡 ${t}</div>`).join('')}
+                                    </div>
+                                ` : ''}
+                                ${item.files && item.files.length > 0 ? `
+                                    <div class="evidence-files">
+                                        ${item.files.map(f => `
+                                            <div class="file-tag">📎 ${f.name}</div>
+                                        `).join('')}
+                                    </div>
+                                ` : ''}
+                                ${item.note ? `<div class="evidence-note">💬 ${item.note}</div>` : ''}
+                            </div>
+                        `).join('')}
                     </div>
-                </div>
-            `).join('');
+                `;
+                list.appendChild(catSection);
+            });
         }
         
         // Update modal
         window.openUpdateModal = function(evidenceId) {
             currentEvidence = evidenceId;
-            const item = document.querySelector(`.evidence-item:has(button[onclick*="${evidenceId}"])`);
-            const name = item.querySelector('.evidence-name').childNodes[0].textContent.trim();
+            const evidence = currentEvidenceList.find(e => e.id === evidenceId);
+            if (!evidence) return;
             
-            document.getElementById('modal-evidence-name').textContent = name;
+            document.getElementById('modal-evidence-name').textContent = evidence.name;
+            document.getElementById('modal-category').textContent = evidence.category || '其他';
             document.getElementById('update-modal').classList.add('show');
             
-            selectedStatus = 'collected';
+            selectedStatus = evidence.status || 'pending';
             updateStatusButtons();
-            document.getElementById('note-input').value = '';
-            tempFiles = [];
+            document.getElementById('note-input').value = evidence.note || '';
+            tempFiles = evidence.files ? [...evidence.files] : [];
             renderFileList();
+            
+            // 显示/隐藏删除按钮
+            const deleteBtn = document.getElementById('delete-evidence-btn');
+            if (evidence.isCustom) {
+                deleteBtn.style.display = 'block';
+            } else {
+                deleteBtn.style.display = 'none';
+            }
         };
         
         function updateStatusButtons() {
@@ -812,6 +864,35 @@
             }
         });
         
+        // 删除证据按钮
+        document.getElementById('delete-evidence-btn').addEventListener('click', async () => {
+            if (!currentEvidence || !currentCase) return;
+            if (!confirm('确定要删除这项证据吗？')) return;
+            
+            try {
+                const res = await fetch(API_BASE + '/api/client/evidence/delete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        caseId: currentCase,
+                        phone: currentPhone,
+                        evidenceId: currentEvidence
+                    })
+                });
+                
+                const data = await res.json();
+                if (data.success) {
+                    showToast('删除成功');
+                    document.getElementById('update-modal').classList.remove('show');
+                    loadEvidence(currentCase);
+                } else {
+                    showToast(data.error || '删除失败');
+                }
+            } catch (e) {
+                showToast('删除失败，请重试');
+            }
+        });
+        
         // Add custom evidence
         document.getElementById('add-evidence-btn').addEventListener('click', () => {
             document.getElementById('add-modal').classList.add('show');
@@ -864,32 +945,7 @@
             }
         });
         
-        // Delete evidence
-        window.deleteEvidence = async function(evidenceId) {
-            if (!confirm('确定要删除这项证据吗？')) return;
-            
-            try {
-                const res = await fetch(API_BASE + '/api/client/evidence/delete', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        caseId: currentCase,
-                        phone: currentPhone,
-                        evidenceId
-                    })
-                });
-                
-                const data = await res.json();
-                if (data.success) {
-                    showToast('删除成功');
-                    loadEvidence(currentCase);
-                } else {
-                    showToast(data.error || '删除失败');
-                }
-            } catch (e) {
-                showToast('删除失败，请重试');
-            }
-        };
+
     </script>
 </body>
 </html>
