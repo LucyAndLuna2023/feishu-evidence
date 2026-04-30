@@ -482,6 +482,13 @@ async function handleRequest(req, res) {
         return;
       }
       
+      // 检查案件是否属于该律师
+      if (db.cases[caseId].lawyer !== lawyer) {
+        res.writeHead(403, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: '无权更新此案件' }));
+        return;
+      }
+      
       Object.assign(db.cases[caseId], updates);
       
       res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -496,6 +503,19 @@ async function handleRequest(req, res) {
       if (!lawyer || !db.lawyers[lawyer]) {
         res.writeHead(401, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: '未授权' }));
+        return;
+      }
+      
+      if (!db.cases[caseId]) {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: '案件不存在' }));
+        return;
+      }
+      
+      // 检查案件是否属于该律师
+      if (db.cases[caseId].lawyer !== lawyer) {
+        res.writeHead(403, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: '无权删除此案件' }));
         return;
       }
       
@@ -520,6 +540,13 @@ async function handleRequest(req, res) {
       if (!db.cases[caseId]) {
         res.writeHead(404, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: '案件不存在' }));
+        return;
+      }
+      
+      // 检查案件是否属于该律师
+      if (db.cases[caseId].lawyer !== lawyer) {
+        res.writeHead(403, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: '无权访问此案件' }));
         return;
       }
       
@@ -906,6 +933,13 @@ async function handleRequest(req, res) {
         return;
       }
       
+      // 检查案件是否属于该律师
+      if (db.cases[caseId].lawyer !== lawyer) {
+        res.writeHead(403, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: '无权查看此案件的赔偿计算' }));
+        return;
+      }
+      
       const caseInfo = db.cases[caseId];
       const compensationList = db.compensation[caseId] || [];
       
@@ -984,6 +1018,13 @@ async function handleRequest(req, res) {
       if (!db.cases[caseId]) {
         res.writeHead(404, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ error: '案件不存在' }));
+        return;
+      }
+      
+      // 检查案件是否属于该律师
+      if (db.cases[caseId].lawyer !== lawyer) {
+        res.writeHead(403, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: '无权更新此案件状态' }));
         return;
       }
       
