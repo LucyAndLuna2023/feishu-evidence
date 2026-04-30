@@ -364,7 +364,7 @@
     
     <!-- Create Case Modal -->
     <div class="modal-overlay" id="create-modal">
-        <div class="modal-content">
+        <div class="modal-content" style="max-width: 700px;">
             <div class="modal-header">
                 <span class="modal-title">新建案件</span>
                 <button class="modal-close" id="create-modal-close">×</button>
@@ -372,22 +372,69 @@
             <div class="modal-body">
                 <div class="form-row">
                     <div class="form-group">
-                        <label class="form-label">客户姓名</label>
+                        <label class="form-label">客户姓名 <span style="color: #f44336;">*</span></label>
                         <input type="text" class="form-input" id="new-client-name" placeholder="客户姓名">
                     </div>
                     <div class="form-group">
-                        <label class="form-label">客户手机号</label>
+                        <label class="form-label">联系电话 <span style="color: #f44336;">*</span></label>
                         <input type="tel" class="form-input" id="new-client-phone" placeholder="11位手机号">
                     </div>
                 </div>
-                <div class="form-group">
-                    <label class="form-label">案件类型</label>
-                    <select class="form-select" id="new-case-type">
-                        <option value="illegal_termination">违法解除劳动合同</option>
-                        <option value="unpaid_wages">拖欠工资</option>
-                        <option value="unpaid_leave">未休年假</option>
-                        <option value="work_injury">工伤赔偿</option>
-                    </select>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">案件类型 <span style="color: #f44336;">*</span></label>
+                        <select class="form-select" id="new-case-type">
+                            <option value="">请选择</option>
+                            <option value="illegal_termination">违法解除劳动合同</option>
+                            <option value="unpaid_wages">拖欠工资</option>
+                            <option value="unpaid_leave">未休年假</option>
+                            <option value="work_injury">工伤赔偿</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">地区 <span style="color: #f44336;">*</span></label>
+                        <select class="form-select" id="new-case-region">
+                            <option value="">请选择</option>
+                            <option value="北京">北京</option>
+                            <option value="上海">上海</option>
+                            <option value="广州">广州</option>
+                            <option value="深圳">深圳</option>
+                            <option value="杭州">杭州</option>
+                            <option value="成都">成都</option>
+                            <option value="武汉">武汉</option>
+                            <option value="南京">南京</option>
+                            <option value="西安">西安</option>
+                            <option value="重庆">重庆</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">入职日期</label>
+                        <input type="date" class="form-input" id="new-entry-date">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">离职日期</label>
+                        <input type="date" class="form-input" id="new-exit-date">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">月平均工资（元）</label>
+                        <input type="number" class="form-input" id="new-avg-salary" placeholder="例如：15000">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">解除原因</label>
+                        <select class="form-select" id="new-termination-reason">
+                            <option value="">请选择</option>
+                            <option value="违法解除">违法解除</option>
+                            <option value="协商解除">协商解除</option>
+                            <option value="经济性裁员">经济性裁员</option>
+                            <option value="未签劳动合同">未签劳动合同</option>
+                            <option value="拖欠工资">拖欠工资</option>
+                            <option value="调岗降薪">调岗降薪</option>
+                        </select>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label class="form-label">案件备注</label>
@@ -574,10 +621,15 @@
             const clientName = document.getElementById('new-client-name').value.trim();
             const clientPhone = document.getElementById('new-client-phone').value.trim();
             const caseType = document.getElementById('new-case-type').value;
+            const region = document.getElementById('new-case-region').value;
+            const entryDate = document.getElementById('new-entry-date').value;
+            const exitDate = document.getElementById('new-exit-date').value;
+            const avgSalary = document.getElementById('new-avg-salary').value;
+            const terminationReason = document.getElementById('new-termination-reason').value;
             const notes = document.getElementById('new-case-notes').value.trim();
             
-            if (!clientName || !clientPhone) {
-                alert('请填写客户信息');
+            if (!clientName || !clientPhone || !caseType || !region) {
+                alert('请填写必填项（客户姓名、联系电话、案件类型、地区）');
                 return;
             }
             
@@ -590,6 +642,11 @@
                         clientName,
                         clientPhone,
                         caseType,
+                        region,
+                        entryDate,
+                        exitDate,
+                        avgSalary: avgSalary ? parseFloat(avgSalary) : 0,
+                        terminationReason,
                         notes
                     })
                 });
@@ -600,6 +657,21 @@
                     // Clear form
                     document.getElementById('new-client-name').value = '';
                     document.getElementById('new-client-phone').value = '';
+                    document.getElementById('new-case-type').value = '';
+                    document.getElementById('new-case-region').value = '';
+                    document.getElementById('new-entry-date').value = '';
+                    document.getElementById('new-exit-date').value = '';
+                    document.getElementById('new-avg-salary').value = '';
+                    document.getElementById('new-termination-reason').value = '';
+                    document.getElementById('new-case-notes').value = '';
+                    loadCases();
+                } else {
+                    alert(data.error || '创建失败');
+                }
+            } catch (e) {
+                alert('创建失败，请重试');
+            }
+        });
                     document.getElementById('new-case-notes').value = '';
                     loadCases();
                 } else {

@@ -232,7 +232,7 @@ const EVIDENCE_TEMPLATES = {
   ]
 };
 
-// 数据存储
+// 数据存储 - 匹配多维表格结构
 const db = {
   cases: {
     'CASE-001': {
@@ -241,12 +241,33 @@ const db = {
       clientPhone: '13800138001',
       lawyer: '刘正禹',
       caseType: 'illegal_termination',
-      status: 'collecting',
+      status: 'collecting', // 证据收集/待立案/已立案/调解中/仲裁中/已结案/一审中
       createdAt: '2026-04-30',
-      notes: ''
+      notes: '',
+      // 新增字段（匹配多维表格）
+      entryDate: '2024-01-01', // 入职日期
+      exitDate: '2026-04-15',  // 离职日期
+      avgSalary: 15000,        // 月平均工资
+      region: '北京',          // 地区
+      terminationReason: '违法解除' // 解除原因
     }
   },
   evidence: {},
+  // 赔偿计算表
+  compensation: {},
+  // 地区配置
+  regions: {
+    '北京': { minWage: 2420, socialBaseMin: 6821, socialBaseMax: 34104 },
+    '上海': { minWage: 2690, socialBaseMin: 7384, socialBaseMax: 36921 },
+    '广州': { minWage: 2300, socialBaseMin: 5284, socialBaseMax: 26421 },
+    '深圳': { minWage: 2360, socialBaseMin: 3523, socialBaseMax: 26421 },
+    '杭州': { minWage: 2280, socialBaseMin: 4462, socialBaseMax: 22311 },
+    '成都': { minWage: 2100, socialBaseMin: 4246, socialBaseMax: 21228 },
+    '武汉': { minWage: 2210, socialBaseMin: 4224, socialBaseMax: 21120 },
+    '南京': { minWage: 2280, socialBaseMin: 4494, socialBaseMax: 22470 },
+    '西安': { minWage: 2160, socialBaseMin: 4638, socialBaseMax: 23190 },
+    '重庆': { minWage: 2100, socialBaseMin: 4118, socialBaseMax: 20587 }
+  },
   lawyers: {
     '刘正禹': { name: '刘正禹', password: '123456', cases: ['CASE-001'] }
   },
@@ -404,7 +425,7 @@ async function handleRequest(req, res) {
     // 创建案件
     if (pathname === '/api/lawyer/cases' && req.method === 'POST') {
       const body = await parseBody(req);
-      const { lawyer, clientName, clientPhone, caseType, notes } = body;
+      const { lawyer, clientName, clientPhone, caseType, region, entryDate, exitDate, avgSalary, terminationReason, notes } = body;
       
       if (!lawyer || !db.lawyers[lawyer]) {
         res.writeHead(401, { 'Content-Type': 'application/json' });
@@ -419,9 +440,14 @@ async function handleRequest(req, res) {
         clientPhone,
         lawyer,
         caseType,
-        status: 'collecting',
+        status: '证据收集',
         createdAt: new Date().toISOString().split('T')[0],
-        notes: notes || ''
+        notes: notes || '',
+        region: region || '',
+        entryDate: entryDate || '',
+        exitDate: exitDate || '',
+        avgSalary: avgSalary || 0,
+        terminationReason: terminationReason || ''
       };
       
       // 初始化证据清单
@@ -751,23 +777,181 @@ async function handleRequest(req, res) {
       return;
     }
     
-    // 获取证据模板
-    if (pathname === '/api/templates' && req.method === 'GET') {
+    // ========== 赔偿计算接口 ==========
+    
+    // 获取案件赔偿计算
+    if (pathname === '/api/lawyer/compensation' && req.method === 'GET') {
+      const { lawyer, caseId } = query;
+      
+      if (!lawyer || !db.lawyers[lawyer]) {
+        res.writeHead(401, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: '未授权' }));
+        return;
+      }
+      
+      if (!db.cases[caseId]) {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: '案件不存在' }));
+        return;
+      }
+      
+      const caseInfo = db.cases[caseId];
+      const compensationList = db.compensation[caseId] || [];
+      
+      // 自动计算赔偿金额
+      const calculations = calculateCompensation(caseInfo);
+      
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({
         success: true,
-        templates: Object.entries(EVIDENCE_TEMPLATES).map(([key, items]) => ({
-          type: key,
-          name: {
-            illegal_termination: '违法解除劳动合同',
-            unpaid_wages: '拖欠工资',
-            unpaid_leave: '未休年假',
-            work_injury: '工伤赔偿',
-          }[key],
-          items,
-        }))
+        case: caseInfo,
+        compensation: compensationList,
+        calculations
       }));
       return;
+    }
+    
+    // 添加/更新赔偿计算
+    if (pathname === '/api/lawyer/compensation' && req.method === 'POST') {
+      const body = await parseBody(req);
+      const { lawyer, caseId, item, baseAmount, years, multiplier, note } = body;
+      
+      if (!lawyer || !db.lawyers[lawyer]) {
+        res.writeHead(401, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: '未授权' }));
+        return;
+      }
+      
+      if (!db.compensation[caseId]) {
+        db.compensation[caseId] = [];
+      }
+      
+      const amount = Math.round(baseAmount * years * multiplier);
+      const compItem = {
+        id: 'comp_' + Date.now(),
+        item,
+        baseAmount,
+        years,
+        multiplier,
+        amount,
+        note: note || '',
+        createdAt: new Date().toISOString()
+      };
+      
+      db.compensation[caseId].push(compItem);
+      
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: true, compensation: compItem }));
+      return;
+    }
+    
+    // ========== 地区配置接口 ==========
+    
+    // 获取地区配置
+    if (pathname === '/api/regions' && req.method === 'GET') {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        success: true,
+        regions: db.regions
+      }));
+      return;
+    }
+    
+    // ========== 案件状态更新接口 ==========
+    
+    // 更新案件状态
+    if (pathname === '/api/lawyer/case/status' && req.method === 'POST') {
+      const body = await parseBody(req);
+      const { lawyer, caseId, status } = body;
+      
+      if (!lawyer || !db.lawyers[lawyer]) {
+        res.writeHead(401, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: '未授权' }));
+        return;
+      }
+      
+      if (!db.cases[caseId]) {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: '案件不存在' }));
+        return;
+      }
+      
+      const validStatuses = ['证据收集', '待立案', '已立案', '调解中', '仲裁中', '已结案', '一审中'];
+      if (!validStatuses.includes(status)) {
+        res.writeHead(400, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: '无效的案件状态' }));
+        return;
+      }
+      
+      db.cases[caseId].status = status;
+      
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: true, case: db.cases[caseId] }));
+      return;
+    }
+    
+    // ========== 赔偿计算辅助函数 ==========
+    function calculateCompensation(caseInfo) {
+      const results = [];
+      const avgSalary = caseInfo.avgSalary || 0;
+      const years = calculateWorkYears(caseInfo.entryDate, caseInfo.exitDate);
+      
+      // 违法解除：2N
+      if (caseInfo.caseType === 'illegal_termination') {
+        results.push({
+          item: '违法解除劳动合同赔偿金',
+          formula: `${avgSalary} × ${years} × 2`,
+          baseAmount: avgSalary,
+          years,
+          multiplier: 2,
+          amount: Math.round(avgSalary * years * 2),
+          description: '根据《劳动合同法》第87条，用人单位违法解除劳动合同的，应按经济补偿标准的2倍支付赔偿金'
+        });
+      }
+      
+      // 拖欠工资：本金+25%赔偿金
+      if (caseInfo.caseType === 'unpaid_wages') {
+        results.push({
+          item: '拖欠工资',
+          formula: '拖欠金额（需根据证据确认）',
+          amount: 0,
+          description: '根据《劳动合同法》第85条，用人单位拖欠劳动报酬的，劳动行政部门责令限期支付；逾期不支付的，按应付金额50%-100%加付赔偿金'
+        });
+      }
+      
+      // 未休年假：3倍日工资
+      if (caseInfo.caseType === 'unpaid_leave') {
+        const dailySalary = avgSalary / 21.75;
+        results.push({
+          item: '未休年休假工资报酬',
+          formula: `${dailySalary.toFixed(2)}/天 × 未休天数 × 3`,
+          baseAmount: dailySalary,
+          multiplier: 3,
+          amount: 0,
+          description: '根据《职工带薪年休假条例》第5条，单位应按职工日工资收入的300%支付年休假工资报酬'
+        });
+      }
+      
+      // 工伤：根据伤残等级
+      if (caseInfo.caseType === 'work_injury') {
+        results.push({
+          item: '一次性伤残补助金',
+          formula: '需根据伤残等级确定',
+          amount: 0,
+          description: '根据《工伤保险条例》，一级至十级伤残分别享受27-7个月本人工资的一次性伤残补助金'
+        });
+      }
+      
+      return results;
+    }
+    
+    function calculateWorkYears(entryDate, exitDate) {
+      if (!entryDate || !exitDate) return 0;
+      const entry = new Date(entryDate);
+      const exit = new Date(exitDate);
+      const diffTime = exit - entry;
+      const diffDays = diffTime / (1000 * 60 * 60 * 24);
+      return Math.max(0, Math.round(diffDays / 365 * 10) / 10);
     }
     
     // 静态文件服务 - 根据路径返回不同页面
