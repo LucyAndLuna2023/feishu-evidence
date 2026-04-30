@@ -4,7 +4,7 @@
 
 const http = require('http');
 const url = require('url');
-const PORT = process.env.PORT || 8080;
+const PORT = process.env.PORT || 3000;
 
 const FEISHU_APP_ID = process.env.FEISHU_APP_ID || 'cli_a97a9035b5395cc4';
 const FEISHU_APP_SECRET = process.env.FEISHU_APP_SECRET || '';
