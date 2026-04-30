@@ -57,27 +57,56 @@ async function handleRequest(req, res) {
   console.log(`[${new Date().toISOString()}] ${req.method} ${pathname}`);
   
   try {
-    // 飞书 Webhook 验证 (GET/POST 都支持)
+    // 飞书 Webhook 验证 - 最简化的处理
     if (pathname === '/api/feishu/webhook') {
+      // 尝试从 URL query 获取 challenge
       const challenge = query.challenge;
+      
+      // 如果 URL 有 challenge，直接返回
       if (challenge) {
-        res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ challenge }));
+        const response = JSON.stringify({ challenge });
+        res.writeHead(200, { 
+          'Content-Type': 'application/json',
+          'Content-Length': Buffer.byteLength(response)
+        });
+        res.end(response);
         return;
       }
-      // POST 请求处理
+      
+      // POST 请求需要先读取 body
       if (req.method === 'POST') {
-        const body = await parseBody(req);
-        console.log('收到飞书事件:', body);
-        // 如果 body 中有 challenge
+        const chunks = [];
+        for await (const chunk of req) {
+          chunks.push(chunk);
+        }
+        const bodyStr = Buffer.concat(chunks).toString();
+        
+        // 尝试解析 JSON
+        let body = {};
+        try {
+          if (bodyStr) body = JSON.parse(bodyStr);
+        } catch (e) {}
+        
+        // 如果 body 中有 challenge，返回它
         if (body.challenge) {
-          res.writeHead(200, { 'Content-Type': 'application/json' });
-          res.end(JSON.stringify({ challenge: body.challenge }));
+          const response = JSON.stringify({ challenge: body.challenge });
+          res.writeHead(200, { 
+            'Content-Type': 'application/json',
+            'Content-Length': Buffer.byteLength(response)
+          });
+          res.end(response);
           return;
         }
+        
+        console.log('收到飞书事件:', body);
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ code: 0, msg: 'success' }));
+        return;
       }
+      
+      // 默认返回空
       res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({ code: 0, msg: 'success' }));
+      res.end(JSON.stringify({}));
       return;
     }
     

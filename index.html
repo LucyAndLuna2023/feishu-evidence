@@ -2,33 +2,659 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>劳动纠纷证据录入系统</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>劳动纠纷证据助手</title>
     <style>
-        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; }
-        h1 { color: #333; }
-        .status { padding: 10px; border-radius: 5px; background: #e8f5e9; color: #2e7d32; }
-        .error { background: #ffebee; color: #c62828; }
-        button { padding: 10px 20px; margin: 5px; cursor: pointer; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+        }
+        .container { max-width: 480px; margin: 0 auto; background: #fff; min-height: 100vh; }
+        
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        .header h1 { font-size: 20px; font-weight: 600; }
+        .header p { font-size: 12px; opacity: 0.9; margin-top: 5px; }
+        
+        /* Nav */
+        .nav {
+            display: flex;
+            background: #fff;
+            border-bottom: 1px solid #eee;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .nav-item {
+            flex: 1;
+            padding: 15px;
+            text-align: center;
+            font-size: 14px;
+            color: #666;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            transition: all 0.3s;
+        }
+        .nav-item.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+            font-weight: 500;
+        }
+        
+        /* Page */
+        .page { display: none; padding: 15px; }
+        .page.active { display: block; }
+        
+        /* Card */
+        .card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 15px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+        }
+        .card-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        /* Form */
+        .form-group { margin-bottom: 15px; }
+        .form-label {
+            display: block;
+            font-size: 14px;
+            color: #333;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+        .form-label .required { color: #f44336; }
+        .form-input, .form-select, .form-textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        .form-input:focus, .form-select:focus, .form-textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .form-textarea { min-height: 100px; resize: vertical; }
+        
+        /* Button */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+            gap: 6px;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            width: 100%;
+        }
+        .btn-primary:active { opacity: 0.9; }
+        .btn-secondary {
+            background: #f5f5f5;
+            color: #333;
+        }
+        .btn-danger {
+            background: #ffebee;
+            color: #c62828;
+        }
+        
+        /* Case List */
+        .case-item {
+            background: #fff;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .case-item:active { transform: scale(0.98); }
+        .case-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .case-id {
+            font-size: 14px;
+            font-weight: 600;
+            color: #667eea;
+        }
+        .case-status {
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .case-status.active { background: #e8f5e9; color: #2e7d32; }
+        .case-status.pending { background: #fff3e0; color: #ef6c00; }
+        .case-status.completed { background: #e3f2fd; color: #1565c0; }
+        .case-client {
+            font-size: 16px;
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 8px;
+        }
+        .case-info {
+            display: flex;
+            gap: 15px;
+            font-size: 13px;
+            color: #666;
+        }
+        .case-info span { display: flex; align-items: center; gap: 4px; }
+        .case-progress {
+            margin-top: 12px;
+            height: 4px;
+            background: #eee;
+            border-radius: 2px;
+            overflow: hidden;
+        }
+        .case-progress-bar {
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 2px;
+            transition: width 0.3s;
+        }
+        
+        /* Evidence Types */
+        .evidence-types {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        .evidence-type {
+            padding: 15px 10px;
+            border: 2px solid #eee;
+            border-radius: 12px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .evidence-type:hover { border-color: #667eea; }
+        .evidence-type.active {
+            border-color: #667eea;
+            background: #f3f4ff;
+        }
+        .evidence-type-icon { font-size: 24px; margin-bottom: 5px; }
+        .evidence-type-name { font-size: 12px; color: #333; }
+        
+        /* Evidence List */
+        .evidence-item {
+            background: #f9f9f9;
+            border-radius: 10px;
+            padding: 12px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
+        .evidence-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            background: #e8eaf6;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+        .evidence-content { flex: 1; }
+        .evidence-name {
+            font-size: 14px;
+            font-weight: 500;
+            color: #333;
+            margin-bottom: 4px;
+        }
+        .evidence-category {
+            font-size: 12px;
+            color: #667eea;
+            margin-bottom: 4px;
+        }
+        .evidence-time {
+            font-size: 11px;
+            color: #999;
+        }
+        
+        /* Upload Area */
+        .upload-area {
+            border: 2px dashed #ddd;
+            border-radius: 12px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .upload-area:hover { border-color: #667eea; background: #f9f9ff; }
+        .upload-icon { font-size: 40px; margin-bottom: 10px; }
+        .upload-text { font-size: 14px; color: #666; }
+        .upload-hint { font-size: 12px; color: #999; margin-top: 5px; }
+        
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #999;
+        }
+        .empty-icon { font-size: 60px; margin-bottom: 15px; }
+        .empty-text { font-size: 14px; }
+        
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 24px;
+            font-size: 14px;
+            opacity: 0;
+            transition: all 0.3s;
+            z-index: 1000;
+        }
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+        
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            align-items: flex-end;
+            justify-content: center;
+            z-index: 200;
+        }
+        .modal-overlay.show { display: flex; }
+        .modal-content {
+            background: white;
+            border-radius: 20px 20px 0 0;
+            width: 100%;
+            max-width: 480px;
+            max-height: 80vh;
+            overflow-y: auto;
+            padding: 20px;
+            animation: slideUp 0.3s;
+        }
+        @keyframes slideUp {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .modal-title { font-size: 18px; font-weight: 600; }
+        .modal-close {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: none;
+            background: #f5f5f5;
+            cursor: pointer;
+            font-size: 18px;
+        }
     </style>
 </head>
 <body>
-    <h1>🏛️ 劳动纠纷证据录入系统</h1>
-    <div class="status" id="status">系统运行中</div>
-    <p>API 地址: <code id="api"></code></p>
-    <script>
-        const apiBase = window.location.origin;
-        document.getElementById('api').textContent = apiBase;
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <h1>🏛️ 劳动纠纷证据助手</h1>
+            <p>专业律师助理 · 高效证据收集</p>
+        </div>
         
-        fetch(apiBase + '/api/health')
-            .then(r => r.json())
-            .then(d => {
-                document.getElementById('status').textContent = '✅ 服务正常: ' + d.time;
-            })
-            .catch(e => {
-                document.getElementById('status').textContent = '❌ 服务异常';
-                document.getElementById('status').className = 'error';
+        <!-- Navigation -->
+        <div class="nav">
+            <div class="nav-item active" data-page="cases">📋 案件</div>
+            <div class="nav-item" data-page="evidence">📝 证据</div>
+            <div class="nav-item" data-page="upload">📤 录入</div>
+        </div>
+        
+        <!-- Cases Page -->
+        <div class="page active" id="cases-page">
+            <div id="case-list">
+                <!-- Cases will be loaded here -->
+            </div>
+        </div>
+        
+        <!-- Evidence Page -->
+        <div class="page" id="evidence-page">
+            <div class="card">
+                <div class="card-title">📁 选择案件查看证据</div>
+                <select class="form-select" id="evidence-case-select">
+                    <option value="">请选择案件</option>
+                </select>
+            </div>
+            <div id="evidence-list">
+                <div class="empty-state">
+                    <div class="empty-icon">📂</div>
+                    <div class="empty-text">请选择案件查看证据清单</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Upload Page -->
+        <div class="page" id="upload-page">
+            <div class="card">
+                <div class="card-title">📋 选择案件</div>
+                <select class="form-select" id="upload-case-select">
+                    <option value="">请选择案件</option>
+                </select>
+            </div>
+            
+            <div class="card">
+                <div class="card-title">🏷️ 证据类型</div>
+                <div class="evidence-types">
+                    <div class="evidence-type active" data-type="contract">
+                        <div class="evidence-type-icon">📄</div>
+                        <div class="evidence-type-name">劳动合同</div>
+                    </div>
+                    <div class="evidence-type" data-type="salary">
+                        <div class="evidence-type-icon">💰</div>
+                        <div class="evidence-type-name">工资流水</div>
+                    </div>
+                    <div class="evidence-type" data-type="attendance">
+                        <div class="evidence-type-icon">⏰</div>
+                        <div class="evidence-type-name">考勤记录</div>
+                    </div>
+                    <div class="evidence-type" data-type="social">
+                        <div class="evidence-type-icon">🏥</div>
+                        <div class="evidence-type-name">社保证明</div>
+                    </div>
+                    <div class="evidence-type" data-type="termination">
+                        <div class="evidence-type-icon">📨</div>
+                        <div class="evidence-type-name">解除通知</div>
+                    </div>
+                    <div class="evidence-type" data-type="chat">
+                        <div class="evidence-type-icon">💬</div>
+                        <div class="evidence-type-name">沟通记录</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="card">
+                <div class="card-title">📝 证据描述</div>
+                <textarea class="form-textarea" id="evidence-desc" placeholder="请描述证据内容，如：2024年1月工资条，显示基本工资8000元..."></textarea>
+            </div>
+            
+            <div class="card">
+                <div class="card-title">📎 上传材料</div>
+                <div class="upload-area" id="upload-area">
+                    <div class="upload-icon">📤</div>
+                    <div class="upload-text">点击上传或拖拽文件</div>
+                    <div class="upload-hint">支持图片、PDF、Word等格式</div>
+                </div>
+            </div>
+            
+            <button class="btn btn-primary" id="submit-btn" style="margin-top: 10px;">
+                ✅ 提交证据
+            </button>
+        </div>
+    </div>
+    
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+    
+    <script>
+        const API_BASE = window.location.origin;
+        let cases = [];
+        let currentCase = null;
+        let selectedEvidenceType = 'contract';
+        
+        // Evidence type names
+        const typeNames = {
+            contract: '劳动合同',
+            salary: '工资流水',
+            attendance: '考勤记录',
+            social: '社保证明',
+            termination: '解除通知',
+            chat: '沟通记录'
+        };
+        
+        // Type icons
+        const typeIcons = {
+            contract: '📄',
+            salary: '💰',
+            attendance: '⏰',
+            social: '🏥',
+            termination: '📨',
+            chat: '💬'
+        };
+        
+        // Navigation
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const page = item.dataset.page;
+                showPage(page);
+                document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+                item.classList.add('active');
             });
+        });
+        
+        function showPage(page) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.getElementById(page + '-page').classList.add('active');
+        }
+        
+        // Toast
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2000);
+        }
+        
+        // Load cases
+        async function loadCases() {
+            try {
+                const res = await fetch(API_BASE + '/api/cases');
+                const data = await res.json();
+                cases = data.cases || [];
+                renderCases();
+                updateCaseSelects();
+            } catch (e) {
+                console.error('加载案件失败:', e);
+                showToast('加载案件失败');
+            }
+        }
+        
+        function renderCases() {
+            const list = document.getElementById('case-list');
+            if (cases.length === 0) {
+                list.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">📋</div>
+                        <div class="empty-text">暂无案件</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            list.innerHTML = cases.map(c => `
+                <div class="case-item" data-case="${c.caseId}">
+                    <div class="case-header">
+                        <span class="case-id">${c.caseId}</span>
+                        <span class="case-status ${c.status === '已完成' ? 'completed' : 'active'}">${c.status}</span>
+                    </div>
+                    <div class="case-client">${c.clientName}</div>
+                    <div class="case-info">
+                        <span>📱 ${c.phone}</span>
+                        <span>👤 ${c.lawyer}</span>
+                    </div>
+                    <div class="case-progress">
+                        <div class="case-progress-bar" style="width: ${c.progress}%"></div>
+                    </div>
+                </div>
+            `).join('');
+            
+            document.querySelectorAll('.case-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    const caseId = item.dataset.case;
+                    selectCase(caseId);
+                });
+            });
+        }
+        
+        function updateCaseSelects() {
+            const options = cases.map(c => `<option value="${c.caseId}">${c.caseId} - ${c.clientName}</option>`).join('');
+            document.getElementById('evidence-case-select').innerHTML = '<option value="">请选择案件</option>' + options;
+            document.getElementById('upload-case-select').innerHTML = '<option value="">请选择案件</option>' + options;
+        }
+        
+        function selectCase(caseId) {
+            currentCase = cases.find(c => c.caseId === caseId);
+            document.getElementById('evidence-case-select').value = caseId;
+            loadEvidence(caseId);
+            showPage('evidence');
+            document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+            document.querySelector('[data-page="evidence"]').classList.add('active');
+        }
+        
+        // Load evidence
+        async function loadEvidence(caseId) {
+            try {
+                const res = await fetch(API_BASE + '/api/records?caseId=' + caseId);
+                const data = await res.json();
+                renderEvidence(data.records || []);
+            } catch (e) {
+                console.error('加载证据失败:', e);
+                showToast('加载证据失败');
+            }
+        }
+        
+        function renderEvidence(records) {
+            const list = document.getElementById('evidence-list');
+            if (records.length === 0) {
+                list.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">📂</div>
+                        <div class="empty-text">暂无证据记录</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            list.innerHTML = records.map(r => `
+                <div class="evidence-item">
+                    <div class="evidence-icon">${typeIcons[r.evidenceCategory] || '📄'}</div>
+                    <div class="evidence-content">
+                        <div class="evidence-name">${r.evidenceName}</div>
+                        <div class="evidence-category">${typeNames[r.evidenceCategory] || '其他'}</div>
+                        <div class="evidence-time">${new Date(r.submittedAt).toLocaleString()}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        // Evidence type selection
+        document.querySelectorAll('.evidence-type').forEach(type => {
+            type.addEventListener('click', () => {
+                document.querySelectorAll('.evidence-type').forEach(t => t.classList.remove('active'));
+                type.classList.add('active');
+                selectedEvidenceType = type.dataset.type;
+            });
+        });
+        
+        // Evidence case select change
+        document.getElementById('evidence-case-select').addEventListener('change', (e) => {
+            if (e.target.value) {
+                loadEvidence(e.target.value);
+            } else {
+                document.getElementById('evidence-list').innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-icon">📂</div>
+                        <div class="empty-text">请选择案件查看证据清单</div>
+                    </div>
+                `;
+            }
+        });
+        
+        // Submit evidence
+        document.getElementById('submit-btn').addEventListener('click', async () => {
+            const caseId = document.getElementById('upload-case-select').value;
+            const desc = document.getElementById('evidence-desc').value;
+            
+            if (!caseId) {
+                showToast('请选择案件');
+                return;
+            }
+            if (!desc.trim()) {
+                showToast('请填写证据描述');
+                return;
+            }
+            
+            try {
+                const res = await fetch(API_BASE + '/api/records', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        caseId,
+                        evidenceId: 'EV-' + Date.now(),
+                        evidenceName: desc.slice(0, 20) + (desc.length > 20 ? '...' : ''),
+                        evidenceCategory: selectedEvidenceType,
+                        content: desc
+                    })
+                });
+                
+                const data = await res.json();
+                if (data.success) {
+                    showToast('证据提交成功！');
+                    document.getElementById('evidence-desc').value = '';
+                    // Reload if viewing the same case
+                    if (document.getElementById('evidence-case-select').value === caseId) {
+                        loadEvidence(caseId);
+                    }
+                } else {
+                    showToast('提交失败：' + (data.error || '未知错误'));
+                }
+            } catch (e) {
+                console.error('提交失败:', e);
+                showToast('提交失败，请重试');
+            }
+        });
+        
+        // Upload area click
+        document.getElementById('upload-area').addEventListener('click', () => {
+            showToast('文件上传功能开发中，请先填写证据描述');
+        });
+        
+        // Initialize
+        loadCases();
     </script>
 </body>
 </html>
