@@ -704,6 +704,41 @@
                     
                     document.getElementById('detail-title').textContent = `案件详情 - ${data.case.caseId}`;
                     
+                    // AI审核统计
+                    const aiAudit = data.summary.aiAudit || {};
+                    const aiAuditHtml = aiAudit.totalAudited > 0 ? `
+                        <div style="margin-bottom: 15px; padding: 15px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 10px; color: white;">
+                            <div style="font-size: 14px; font-weight: 600; margin-bottom: 10px; display: flex; align-items: center; gap: 8px;">
+                                🤖 AI审核统计
+                            </div>
+                            <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;">
+                                <div style="text-align: center;">
+                                    <div style="font-size: 20px; font-weight: 700;">${aiAudit.avgScore || 0}</div>
+                                    <div style="font-size: 11px; opacity: 0.9;">平均分</div>
+                                </div>
+                                <div style="text-align: center;">
+                                    <div style="font-size: 20px; font-weight: 700;">${aiAudit.totalAudited || 0}</div>
+                                    <div style="font-size: 11px; opacity: 0.9;">已审核</div>
+                                </div>
+                                <div style="text-align: center;">
+                                    <div style="font-size: 20px; font-weight: 700;">${aiAudit.passed || 0}</div>
+                                    <div style="font-size: 11px; opacity: 0.9;">通过</div>
+                                </div>
+                                <div style="text-align: center;">
+                                    <div style="font-size: 20px; font-weight: 700;">${aiAudit.failed || 0}</div>
+                                    <div style="font-size: 11px; opacity: 0.9;">需修改</div>
+                                </div>
+                            </div>
+                            <button onclick="runAiAudit('${data.case.caseId}')" style="width: 100%; margin-top: 10px; padding: 8px; background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3); border-radius: 6px; color: white; cursor: pointer; font-size: 12px;">
+                                🔄 重新审核全部证据
+                            </button>
+                        </div>
+                    ` : `
+                        <div style="margin-bottom: 15px; padding: 15px; background: #fff3e0; border-radius: 10px; color: #e65100; text-align: center;">
+                            <div style="font-size: 14px;">客户尚未上传证据，AI审核将在证据上传后自动进行</div>
+                        </div>
+                    `;
+                    
                     document.getElementById('detail-content').innerHTML = `
                         <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; padding: 15px; background: #f9f9f9; border-radius: 10px;">
                             <div>
@@ -722,6 +757,14 @@
                                 <div style="font-size: 12px; color: #999; margin-bottom: 5px;">创建日期</div>
                                 <div style="font-weight: 500;">${data.case.createdAt}</div>
                             </div>
+                            <div>
+                                <div style="font-size: 12px; color: #999; margin-bottom: 5px;">地区</div>
+                                <div style="font-weight: 500;">${data.case.region || '-'}</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 12px; color: #999; margin-bottom: 5px;">月平均工资</div>
+                                <div style="font-weight: 500;">${data.case.avgSalary ? data.case.avgSalary + '元' : '-'}</div>
+                            </div>
                         </div>
                         <div style="margin-bottom: 15px;">
                             <div style="font-size: 12px; color: #999; margin-bottom: 5px;">证据收集进度</div>
@@ -733,8 +776,10 @@
                             </div>
                             <div style="font-size: 12px; color: #666; margin-top: 5px;">
                                 已收集 ${data.summary.collected}/${data.summary.total} 项 · 必填 ${data.summary.requiredCollected}/${data.summary.required} 项
+                                ${data.summary.unqualified > 0 ? `<span style="color: #f44336;"> · ${data.summary.unqualified}项不合格</span>` : ''}
                             </div>
                         </div>
+                        ${aiAuditHtml}
                     `;
                     
                     const statusIcons = {
@@ -749,21 +794,58 @@
                         unqualified: '不合格'
                     };
                     
-                    document.getElementById('detail-evidence').innerHTML = data.evidence.map(e => `
-                        <div class="evidence-item">
-                            <div class="evidence-icon ${e.status}">${statusIcons[e.status]}</div>
-                            <div class="evidence-content">
-                                <div class="evidence-name">${e.name} ${e.required ? '<span style="color: #f44336;">*</span>' : ''}</div>
-                                <div class="evidence-desc">${e.description}</div>
+                    document.getElementById('detail-evidence').innerHTML = data.evidence.map(e => {
+                        const aiBadge = e.aiAudit ? 
+                            `<span style="font-size: 11px; padding: 2px 6px; border-radius: 10px; margin-left: 6px; ${e.aiAudit.passed ? 'background: #e8f5e9; color: #2e7d32;' : 'background: #ffebee; color: #c62828;'}">🤖 ${e.aiAudit.score}分</span>` : '';
+                        
+                        const aiComment = e.aiAudit && e.aiAudit.issues && e.aiAudit.issues.length > 0 ? 
+                            `<div style="font-size: 11px; color: #c62828; margin-top: 6px; padding: 6px 8px; background: #ffebee; border-radius: 4px; line-height: 1.4;">${e.aiAudit.aiComment}</div>` : '';
+                        
+                        return `
+                            <div class="evidence-item" style="cursor: default;">
+                                <div class="evidence-icon ${e.status}">${statusIcons[e.status]}</div>
+                                <div class="evidence-content" style="flex: 1;">
+                                    <div class="evidence-name">${e.name} ${e.required ? '<span style="color: #f44336;">*</span>' : ''}${aiBadge}</div>
+                                    <div class="evidence-desc">${e.description}</div>
+                                    ${e.note ? `<div style="font-size: 11px; color: #666; margin-top: 4px;">备注: ${e.note}</div>` : ''}
+                                    ${e.files && e.files.length > 0 ? `<div style="font-size: 11px; color: #1565c0; margin-top: 4px;">📎 ${e.files.length}个文件</div>` : ''}
+                                    ${aiComment}
+                                </div>
+                                <span class="evidence-status ${e.status}">${statusNames[e.status]}</span>
                             </div>
-                            <span class="evidence-status ${e.status}">${statusNames[e.status]}</span>
-                        </div>
-                    `).join('');
+                        `;
+                    }).join('');
                     
                     detailModal.classList.add('show');
                 }
             } catch (e) {
                 console.error('加载失败:', e);
+            }
+        };
+        
+        // AI审核
+        window.runAiAudit = async function(caseId) {
+            if (!confirm('确定要重新审核所有证据吗？')) return;
+            
+            try {
+                const res = await fetch(API_BASE + '/api/lawyer/audit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        lawyer: currentLawyer,
+                        caseId: caseId
+                    })
+                });
+                
+                const data = await res.json();
+                if (data.success) {
+                    alert(data.message);
+                    openDetailModal(caseId); // 刷新详情
+                } else {
+                    alert(data.error || '审核失败');
+                }
+            } catch (e) {
+                alert('审核失败，请重试');
             }
         };
     </script>
