@@ -57,23 +57,25 @@ async function handleRequest(req, res) {
   console.log(`[${new Date().toISOString()}] ${req.method} ${pathname}`);
   
   try {
-    // 飞书 Webhook 验证 (GET)
-    if (pathname === '/api/feishu/webhook' && req.method === 'GET') {
+    // 飞书 Webhook 验证 (GET/POST 都支持)
+    if (pathname === '/api/feishu/webhook') {
       const challenge = query.challenge;
       if (challenge) {
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ challenge }));
         return;
       }
-      res.writeHead(200, { 'Content-Type': 'application/json' });
-      res.end(JSON.stringify({}));
-      return;
-    }
-    
-    // 飞书 Webhook 事件接收 (POST)
-    if (pathname === '/api/feishu/webhook' && req.method === 'POST') {
-      const body = await parseBody(req);
-      console.log('收到飞书事件:', body);
+      // POST 请求处理
+      if (req.method === 'POST') {
+        const body = await parseBody(req);
+        console.log('收到飞书事件:', body);
+        // 如果 body 中有 challenge
+        if (body.challenge) {
+          res.writeHead(200, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ challenge: body.challenge }));
+          return;
+        }
+      }
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ code: 0, msg: 'success' }));
       return;
