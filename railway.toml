@@ -3,4 +3,8 @@ builder = "nixpacks"
 builderConfig = { NODE_VERSION = "18" }
 
 [deploy]
+startCommand = "node api/server.js"
 numInstances = 1
+
+[railway]
+environment = "production"
