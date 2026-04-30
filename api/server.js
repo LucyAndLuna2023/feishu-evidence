@@ -1,5 +1,5 @@
 // ============================================
-// 劳动纠纷证据收集清单系统 - 服务器
+// 劳动纠纷证据收集系统 - 服务器 (多角色版本)
 // ============================================
 
 const http = require('http');
@@ -10,7 +10,6 @@ const PORT = 3000;
 
 // 劳动纠纷标准证据清单模板
 const EVIDENCE_TEMPLATES = {
-  // 违法解除劳动合同
   illegal_termination: [
     { id: 'contract', name: '劳动合同', required: true, description: '完整劳动合同文本' },
     { id: 'salary_flow', name: '工资流水', required: true, description: '近12个月银行工资流水' },
@@ -21,7 +20,6 @@ const EVIDENCE_TEMPLATES = {
     { id: 'company_rules', name: '公司规章制度', required: false, description: '员工手册等制度文件' },
     { id: 'performance', name: '绩效考核记录', required: false, description: '绩效评估表等' },
   ],
-  // 拖欠工资
   unpaid_wages: [
     { id: 'contract', name: '劳动合同', required: true, description: '约定工资标准的合同' },
     { id: 'salary_flow', name: '工资流水', required: true, description: '显示拖欠的银行流水' },
@@ -29,14 +27,12 @@ const EVIDENCE_TEMPLATES = {
     { id: 'owe_proof', name: '欠薪证明', required: false, description: '公司确认的欠条/承诺书' },
     { id: 'attendance', name: '考勤记录', required: true, description: '证明实际工作的考勤' },
   ],
-  // 未休年假
   unpaid_leave: [
     { id: 'contract', name: '劳动合同', required: true, description: '劳动关系证明' },
     { id: 'entry_proof', name: '入职时间证明', required: true, description: '证明工作年限' },
     { id: 'leave_record', name: '休假记录', required: true, description: '公司系统休假记录' },
     { id: 'salary_proof', name: '日工资标准证明', required: true, description: '计算年假工资的基数' },
   ],
-  // 工伤赔偿
   work_injury: [
     { id: 'contract', name: '劳动合同', required: true, description: '劳动关系证明' },
     { id: 'injury_report', name: '工伤认定书', required: true, description: '人社局工伤认定' },
@@ -48,26 +44,25 @@ const EVIDENCE_TEMPLATES = {
 
 // 数据存储
 const db = {
-  cases: {},        // 案件信息
-  evidence: {},     // 证据清单 { caseId: [ { templateId, status, files[], note, updatedAt } ] }
-  clients: {},      // 客户信息 { phone: { name, cases: [] } }
-};
-
-// 初始化示例数据
-db.cases['CASE-001'] = {
-  caseId: 'CASE-001',
-  clientName: '张三',
-  clientPhone: '13800138001',
-  lawyer: '刘正禹',
-  caseType: 'illegal_termination',
-  status: 'collecting',
-  createdAt: '2026-04-30',
-};
-
-db.clients['13800138001'] = {
-  name: '张三',
-  phone: '13800138001',
-  cases: ['CASE-001'],
+  cases: {
+    'CASE-001': {
+      caseId: 'CASE-001',
+      clientName: '张三',
+      clientPhone: '13800138001',
+      lawyer: '刘正禹',
+      caseType: 'illegal_termination',
+      status: 'collecting',
+      createdAt: '2026-04-30',
+      notes: ''
+    }
+  },
+  evidence: {},
+  lawyers: {
+    '刘正禹': { name: '刘正禹', password: '123456', cases: ['CASE-001'] }
+  },
+  clients: {
+    '13800138001': { name: '张三', phone: '13800138001', cases: ['CASE-001'] }
+  },
 };
 
 // 初始化证据清单
@@ -75,13 +70,14 @@ function initEvidenceList(caseId, caseType) {
   const template = EVIDENCE_TEMPLATES[caseType] || EVIDENCE_TEMPLATES.illegal_termination;
   return template.map(item => ({
     ...item,
-    status: 'pending', // pending, collected, unqualified
+    status: 'pending',
     files: [],
     note: '',
     updatedAt: null,
   }));
 }
 
+// 初始化示例数据
 db.evidence['CASE-001'] = initEvidenceList('CASE-001', 'illegal_termination');
 
 // CORS 头
@@ -91,39 +87,30 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
 };
 
-// 解析请求体
 function parseBody(req) {
   return new Promise((resolve, reject) => {
     let body = '';
     req.on('data', chunk => body += chunk);
     req.on('end', () => {
-      try {
-        resolve(body ? JSON.parse(body) : {});
-      } catch (e) {
-        resolve({});
-      }
+      try { resolve(body ? JSON.parse(body) : {}); }
+      catch (e) { resolve({}); }
     });
     req.on('error', reject);
   });
 }
 
-// 主处理器
 async function handleRequest(req, res) {
   const parsedUrl = url.parse(req.url, true);
   const pathname = parsedUrl.pathname;
   const query = parsedUrl.query;
   
-  // CORS 预检
   if (req.method === 'OPTIONS') {
     res.writeHead(200, corsHeaders);
     res.end();
     return;
   }
   
-  Object.entries(corsHeaders).forEach(([key, value]) => {
-    res.setHeader(key, value);
-  });
-  
+  Object.entries(corsHeaders).forEach(([key, value]) => res.setHeader(key, value));
   console.log(`[${new Date().toISOString()}] ${req.method} ${pathname}`);
   
   try {
@@ -132,34 +119,26 @@ async function handleRequest(req, res) {
       const challenge = query.challenge;
       if (challenge) {
         const response = JSON.stringify({ challenge });
-        res.writeHead(200, { 
-          'Content-Type': 'application/json',
-          'Content-Length': Buffer.byteLength(response)
-        });
+        res.writeHead(200, { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(response) });
         res.end(response);
         return;
       }
-      
       if (req.method === 'POST') {
         const chunks = [];
         for await (const chunk of req) chunks.push(chunk);
         const bodyStr = Buffer.concat(chunks).toString();
         let body = {};
         try { if (bodyStr) body = JSON.parse(bodyStr); } catch (e) {}
-        
         if (body.challenge) {
           const response = JSON.stringify({ challenge: body.challenge });
           res.writeHead(200, { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(response) });
           res.end(response);
           return;
         }
-        
-        console.log('收到飞书事件:', body);
         res.writeHead(200, { 'Content-Type': 'application/json' });
         res.end(JSON.stringify({ code: 0, msg: 'success' }));
         return;
       }
-      
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({}));
       return;
@@ -172,7 +151,181 @@ async function handleRequest(req, res) {
       return;
     }
     
-    // 客户登录 - 通过手机号获取案件
+    // ========== 律师接口 ==========
+    
+    // 律师登录
+    if (pathname === '/api/lawyer/login' && req.method === 'POST') {
+      const body = await parseBody(req);
+      const { name, password } = body;
+      
+      const lawyer = db.lawyers[name];
+      if (!lawyer || lawyer.password !== password) {
+        res.writeHead(401, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: '用户名或密码错误' }));
+        return;
+      }
+      
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: true, lawyer: { name: lawyer.name } }));
+      return;
+    }
+    
+    // 获取律师的所有案件
+    if (pathname === '/api/lawyer/cases' && req.method === 'GET') {
+      const { lawyer } = query;
+      if (!lawyer || !db.lawyers[lawyer]) {
+        res.writeHead(401, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: '未授权' }));
+        return;
+      }
+      
+      const cases = Object.values(db.cases).filter(c => c.lawyer === lawyer).map(c => {
+        const evidenceList = db.evidence[c.caseId] || [];
+        const collected = evidenceList.filter(e => e.status === 'collected').length;
+        const required = evidenceList.filter(e => e.required).length;
+        const requiredCollected = evidenceList.filter(e => e.required && e.status === 'collected').length;
+        return {
+          ...c,
+          progress: {
+            total: evidenceList.length,
+            collected,
+            required,
+            requiredCollected,
+            percent: Math.round((collected / evidenceList.length) * 100) || 0,
+          }
+        };
+      });
+      
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: true, cases }));
+      return;
+    }
+    
+    // 创建案件
+    if (pathname === '/api/lawyer/cases' && req.method === 'POST') {
+      const body = await parseBody(req);
+      const { lawyer, clientName, clientPhone, caseType, notes } = body;
+      
+      if (!lawyer || !db.lawyers[lawyer]) {
+        res.writeHead(401, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: '未授权' }));
+        return;
+      }
+      
+      const caseId = 'CASE-' + Date.now().toString().slice(-6);
+      db.cases[caseId] = {
+        caseId,
+        clientName,
+        clientPhone,
+        lawyer,
+        caseType,
+        status: 'collecting',
+        createdAt: new Date().toISOString().split('T')[0],
+        notes: notes || ''
+      };
+      
+      // 初始化证据清单
+      db.evidence[caseId] = initEvidenceList(caseId, caseType);
+      
+      // 关联客户
+      if (!db.clients[clientPhone]) {
+        db.clients[clientPhone] = { name: clientName, phone: clientPhone, cases: [] };
+      }
+      db.clients[clientPhone].cases.push(caseId);
+      db.lawyers[lawyer].cases.push(caseId);
+      
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: true, case: db.cases[caseId] }));
+      return;
+    }
+    
+    // 更新案件
+    if (pathname === '/api/lawyer/cases' && req.method === 'PUT') {
+      const body = await parseBody(req);
+      const { lawyer, caseId, ...updates } = body;
+      
+      if (!lawyer || !db.lawyers[lawyer]) {
+        res.writeHead(401, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: '未授权' }));
+        return;
+      }
+      
+      if (!db.cases[caseId]) {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: '案件不存在' }));
+        return;
+      }
+      
+      Object.assign(db.cases[caseId], updates);
+      
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: true, case: db.cases[caseId] }));
+      return;
+    }
+    
+    // 删除案件
+    if (pathname === '/api/lawyer/cases' && req.method === 'DELETE') {
+      const { lawyer, caseId } = query;
+      
+      if (!lawyer || !db.lawyers[lawyer]) {
+        res.writeHead(401, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: '未授权' }));
+        return;
+      }
+      
+      delete db.cases[caseId];
+      delete db.evidence[caseId];
+      
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ success: true }));
+      return;
+    }
+    
+    // 获取案件证据详情（律师查看）
+    if (pathname === '/api/lawyer/evidence' && req.method === 'GET') {
+      const { lawyer, caseId } = query;
+      
+      if (!lawyer || !db.lawyers[lawyer]) {
+        res.writeHead(401, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: '未授权' }));
+        return;
+      }
+      
+      if (!db.cases[caseId]) {
+        res.writeHead(404, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: '案件不存在' }));
+        return;
+      }
+      
+      const caseInfo = db.cases[caseId];
+      const evidenceList = db.evidence[caseId] || [];
+      
+      const collected = evidenceList.filter(e => e.status === 'collected').length;
+      const required = evidenceList.filter(e => e.required).length;
+      const requiredCollected = evidenceList.filter(e => e.required && e.status === 'collected').length;
+      const unqualified = evidenceList.filter(e => e.status === 'unqualified').length;
+      
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({
+        success: true,
+        case: caseInfo,
+        evidence: evidenceList,
+        summary: {
+          total: evidenceList.length,
+          collected,
+          required,
+          requiredCollected,
+          unqualified,
+          percent: Math.round((collected / evidenceList.length) * 100) || 0,
+          isComplete: requiredCollected >= required && unqualified === 0,
+        }
+      }));
+      return;
+    }
+    
+    // ========== 客户接口 ==========
+    
+    // 客户登录
     if (pathname === '/api/client/login' && req.method === 'POST') {
       const body = await parseBody(req);
       const { phone } = body;
@@ -190,7 +343,6 @@ async function handleRequest(req, res) {
         return;
       }
       
-      // 获取客户的所有案件
       const cases = client.cases.map(caseId => {
         const caseInfo = db.cases[caseId];
         const evidenceList = db.evidence[caseId] || [];
@@ -219,8 +371,8 @@ async function handleRequest(req, res) {
       return;
     }
     
-    // 获取证据清单
-    if (pathname === '/api/evidence/list' && req.method === 'GET') {
+    // 获取客户证据清单
+    if (pathname === '/api/client/evidence' && req.method === 'GET') {
       const { caseId, phone } = query;
       
       if (!caseId || !phone) {
@@ -229,7 +381,6 @@ async function handleRequest(req, res) {
         return;
       }
       
-      // 验证客户是否有权限查看此案件
       const client = db.clients[phone];
       if (!client || !client.cases.includes(caseId)) {
         res.writeHead(403, { 'Content-Type': 'application/json' });
@@ -240,19 +391,16 @@ async function handleRequest(req, res) {
       const caseInfo = db.cases[caseId];
       let evidenceList = db.evidence[caseId];
       
-      // 如果没有初始化，创建清单
       if (!evidenceList) {
         evidenceList = initEvidenceList(caseId, caseInfo.caseType);
         db.evidence[caseId] = evidenceList;
       }
       
-      // 计算完成度
       const collected = evidenceList.filter(e => e.status === 'collected').length;
       const required = evidenceList.filter(e => e.required).length;
       const requiredCollected = evidenceList.filter(e => e.required && e.status === 'collected').length;
       const unqualified = evidenceList.filter(e => e.status === 'unqualified').length;
       
-      // 自动检测
       const isComplete = requiredCollected >= required;
       const issues = [];
       
@@ -284,8 +432,8 @@ async function handleRequest(req, res) {
       return;
     }
     
-    // 更新证据状态
-    if (pathname === '/api/evidence/update' && req.method === 'POST') {
+    // 客户更新证据
+    if (pathname === '/api/client/evidence/update' && req.method === 'POST') {
       const body = await parseBody(req);
       const { caseId, phone, evidenceId, status, note, files } = body;
       
@@ -295,7 +443,6 @@ async function handleRequest(req, res) {
         return;
       }
       
-      // 验证权限
       const client = db.clients[phone];
       if (!client || !client.cases.includes(caseId)) {
         res.writeHead(403, { 'Content-Type': 'application/json' });
@@ -317,7 +464,6 @@ async function handleRequest(req, res) {
         return;
       }
       
-      // 更新
       if (status) evidence.status = status;
       if (note !== undefined) evidence.note = note;
       if (files) evidence.files = files;
@@ -328,8 +474,8 @@ async function handleRequest(req, res) {
       return;
     }
     
-    // 添加自定义证据
-    if (pathname === '/api/evidence/add' && req.method === 'POST') {
+    // 客户添加自定义证据
+    if (pathname === '/api/client/evidence/add' && req.method === 'POST') {
       const body = await parseBody(req);
       const { caseId, phone, name, description, required } = body;
       
@@ -339,7 +485,6 @@ async function handleRequest(req, res) {
         return;
       }
       
-      // 验证权限
       const client = db.clients[phone];
       if (!client || !client.cases.includes(caseId)) {
         res.writeHead(403, { 'Content-Type': 'application/json' });
@@ -372,8 +517,8 @@ async function handleRequest(req, res) {
       return;
     }
     
-    // 删除证据
-    if (pathname === '/api/evidence/delete' && req.method === 'POST') {
+    // 客户删除自定义证据
+    if (pathname === '/api/client/evidence/delete' && req.method === 'POST') {
       const body = await parseBody(req);
       const { caseId, phone, evidenceId } = body;
       
@@ -383,7 +528,6 @@ async function handleRequest(req, res) {
         return;
       }
       
-      // 验证权限
       const client = db.clients[phone];
       if (!client || !client.cases.includes(caseId)) {
         res.writeHead(403, { 'Content-Type': 'application/json' });
@@ -394,7 +538,6 @@ async function handleRequest(req, res) {
       let evidenceList = db.evidence[caseId];
       if (evidenceList) {
         const evidence = evidenceList.find(e => e.id === evidenceId);
-        // 只能删除自定义证据
         if (evidence && evidence.isCustom) {
           db.evidence[caseId] = evidenceList.filter(e => e.id !== evidenceId);
           res.writeHead(200, { 'Content-Type': 'application/json' });
@@ -408,8 +551,8 @@ async function handleRequest(req, res) {
       return;
     }
     
-    // 获取证据模板列表
-    if (pathname === '/api/evidence/templates' && req.method === 'GET') {
+    // 获取证据模板
+    if (pathname === '/api/templates' && req.method === 'GET') {
       res.writeHead(200, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({
         success: true,
@@ -427,9 +570,33 @@ async function handleRequest(req, res) {
       return;
     }
     
-    // 静态文件服务
+    // 静态文件服务 - 根据路径返回不同页面
+    const fs = require('fs');
+    const path = require('path');
+    
     if (pathname === '/' || pathname === '/index.html') {
-      const htmlPath = path.join(__dirname, '..', 'index.html');
+      // 默认显示客户页面
+      const htmlPath = path.join(__dirname, '..', 'client.html');
+      if (fs.existsSync(htmlPath)) {
+        const html = fs.readFileSync(htmlPath, 'utf-8');
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+        res.end(html);
+        return;
+      }
+    }
+    
+    if (pathname === '/lawyer' || pathname === '/lawyer.html') {
+      const htmlPath = path.join(__dirname, '..', 'lawyer.html');
+      if (fs.existsSync(htmlPath)) {
+        const html = fs.readFileSync(htmlPath, 'utf-8');
+        res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+        res.end(html);
+        return;
+      }
+    }
+    
+    if (pathname === '/client' || pathname === '/client.html') {
+      const htmlPath = path.join(__dirname, '..', 'client.html');
       if (fs.existsSync(htmlPath)) {
         const html = fs.readFileSync(htmlPath, 'utf-8');
         res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
@@ -449,7 +616,6 @@ async function handleRequest(req, res) {
   }
 }
 
-// 启动服务器
 const server = http.createServer(handleRequest);
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`劳动纠纷证据收集系统运行在端口 ${PORT}`);

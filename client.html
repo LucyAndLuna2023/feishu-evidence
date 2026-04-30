@@ -1,0 +1,895 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>证据收集清单 - 劳动纠纷</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+        }
+        .container { max-width: 480px; margin: 0 auto; background: #fff; min-height: 100vh; }
+        
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+        .header h1 { font-size: 18px; font-weight: 600; }
+        .header p { font-size: 12px; opacity: 0.9; margin-top: 5px; }
+        
+        /* Login Page */
+        .login-page { padding: 40px 20px; }
+        .login-title {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .login-title h2 { font-size: 24px; color: #333; margin-bottom: 10px; }
+        .login-title p { font-size: 14px; color: #666; }
+        .form-group { margin-bottom: 20px; }
+        .form-label {
+            display: block;
+            font-size: 14px;
+            color: #333;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+        .form-input {
+            width: 100%;
+            padding: 14px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: border-color 0.3s;
+        }
+        .form-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+        .btn-primary:active { opacity: 0.9; }
+        
+        /* Main Content */
+        .main-content { display: none; }
+        .main-content.show { display: block; }
+        
+        /* User Info */
+        .user-info {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 10px 15px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 8px;
+            margin-top: 10px;
+            font-size: 13px;
+        }
+        .user-info button {
+            background: none;
+            border: none;
+            color: white;
+            text-decoration: underline;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        
+        /* Case Selector */
+        .case-selector {
+            padding: 15px;
+            background: white;
+            border-bottom: 1px solid #eee;
+        }
+        .case-selector select {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            background: white;
+        }
+        
+        /* Progress Card */
+        .progress-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 20px;
+            margin: 15px;
+            border-radius: 16px;
+        }
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .progress-title { font-size: 14px; opacity: 0.9; }
+        .progress-percent { font-size: 28px; font-weight: 700; }
+        .progress-bar {
+            height: 8px;
+            background: rgba(255,255,255,0.3);
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+        .progress-fill {
+            height: 100%;
+            background: white;
+            border-radius: 4px;
+            transition: width 0.5s;
+        }
+        .progress-stats {
+            display: flex;
+            gap: 15px;
+            font-size: 12px;
+            opacity: 0.9;
+        }
+        
+        /* Alert */
+        .alert {
+            margin: 0 15px 15px;
+            padding: 12px 15px;
+            border-radius: 10px;
+            font-size: 13px;
+            display: flex;
+            align-items: flex-start;
+            gap: 10px;
+        }
+        .alert-warning {
+            background: #fff3e0;
+            color: #e65100;
+        }
+        .alert-success {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+        .alert-icon { font-size: 18px; }
+        .alert-content { flex: 1; }
+        .alert-title { font-weight: 600; margin-bottom: 4px; }
+        
+        /* Section */
+        .section {
+            padding: 15px;
+            border-bottom: 8px solid #f5f5f5;
+        }
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        /* Evidence Item */
+        .evidence-item {
+            background: #f9f9f9;
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 12px;
+            border: 2px solid transparent;
+            transition: all 0.3s;
+        }
+        .evidence-item:hover { border-color: #ddd; }
+        .evidence-item.collected { border-color: #4caf50; background: #f1f8e9; }
+        .evidence-item.unqualified { border-color: #f44336; background: #ffebee; }
+        
+        .evidence-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 8px;
+        }
+        .evidence-name {
+            font-size: 15px;
+            font-weight: 600;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .evidence-required {
+            color: #f44336;
+            font-size: 12px;
+        }
+        .evidence-status {
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        .evidence-status.pending {
+            background: #e0e0e0;
+            color: #666;
+        }
+        .evidence-status.collected {
+            background: #4caf50;
+            color: white;
+        }
+        .evidence-status.unqualified {
+            background: #f44336;
+            color: white;
+        }
+        
+        .evidence-desc {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 10px;
+            line-height: 1.5;
+        }
+        
+        .evidence-files {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-bottom: 10px;
+        }
+        .file-tag {
+            background: white;
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+            color: #333;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .file-tag button {
+            background: none;
+            border: none;
+            color: #999;
+            cursor: pointer;
+            font-size: 14px;
+            padding: 0;
+            width: 16px;
+            height: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .evidence-note {
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 10px;
+            padding: 8px;
+            background: white;
+            border-radius: 6px;
+        }
+        
+        .evidence-actions {
+            display: flex;
+            gap: 8px;
+        }
+        .evidence-actions button {
+            flex: 1;
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            background: white;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .evidence-actions button:hover {
+            background: #f5f5f5;
+        }
+        .evidence-actions .btn-collect {
+            background: #4caf50;
+            color: white;
+            border-color: #4caf50;
+        }
+        .evidence-actions .btn-collect:hover {
+            background: #45a049;
+        }
+        
+        /* Add Custom Evidence */
+        .add-evidence-btn {
+            width: 100%;
+            padding: 15px;
+            border: 2px dashed #ddd;
+            border-radius: 12px;
+            background: white;
+            color: #667eea;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+        .add-evidence-btn:hover {
+            border-color: #667eea;
+            background: #f9f9ff;
+        }
+        
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            align-items: flex-end;
+            justify-content: center;
+            z-index: 1000;
+        }
+        .modal-overlay.show { display: flex; }
+        .modal-content {
+            background: white;
+            border-radius: 20px 20px 0 0;
+            width: 100%;
+            max-width: 480px;
+            max-height: 80vh;
+            overflow-y: auto;
+            padding: 20px;
+            animation: slideUp 0.3s;
+        }
+        @keyframes slideUp {
+            from { transform: translateY(100%); }
+            to { transform: translateY(0); }
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .modal-title { font-size: 18px; font-weight: 600; }
+        .modal-close {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: none;
+            background: #f5f5f5;
+            cursor: pointer;
+            font-size: 18px;
+        }
+        
+        /* Upload Area */
+        .upload-area {
+            border: 2px dashed #ddd;
+            border-radius: 12px;
+            padding: 30px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s;
+            margin-bottom: 15px;
+        }
+        .upload-area:hover { border-color: #667eea; background: #f9f9ff; }
+        .upload-icon { font-size: 40px; margin-bottom: 10px; }
+        .upload-text { font-size: 14px; color: #666; }
+        
+        /* Note Input */
+        .note-input {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            font-size: 14px;
+            resize: vertical;
+            min-height: 80px;
+            margin-bottom: 15px;
+        }
+        
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: rgba(0,0,0,0.8);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 24px;
+            font-size: 14px;
+            opacity: 0;
+            transition: all 0.3s;
+            z-index: 2000;
+        }
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+        
+        /* Footer Links */
+        .footer-links {
+            text-align: center;
+            padding: 20px;
+            font-size: 13px;
+            color: #999;
+        }
+        .footer-links a {
+            color: #667eea;
+            text-decoration: none;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Login Page -->
+        <div class="login-page" id="login-page">
+            <div class="login-title">
+                <h2>📋 证据收集清单</h2>
+                <p>请输入您的手机号查看案件证据清单</p>
+            </div>
+            <div class="form-group">
+                <label class="form-label">手机号</label>
+                <input type="tel" class="form-input" id="phone-input" placeholder="请输入11位手机号" maxlength="11">
+            </div>
+            <button class="btn btn-primary" id="login-btn">查看我的案件</button>
+            <div class="footer-links">
+                律师请 <a href="/lawyer">登录律师工作台</a>
+            </div>
+        </div>
+        
+        <!-- Main Content -->
+        <div class="main-content" id="main-content">
+            <!-- Header -->
+            <div class="header">
+                <h1>📋 证据收集清单</h1>
+                <p>请按要求准备证据材料</p>
+                <div class="user-info">
+                    <span id="user-name">--</span>
+                    <button id="logout-btn">退出</button>
+                </div>
+            </div>
+            
+            <!-- Case Selector -->
+            <div class="case-selector">
+                <select id="case-select">
+                    <option value="">选择案件</option>
+                </select>
+            </div>
+            
+            <!-- Progress Card -->
+            <div class="progress-card" id="progress-card" style="display: none;">
+                <div class="progress-header">
+                    <span class="progress-title">证据收集进度</span>
+                    <span class="progress-percent" id="progress-percent">0%</span>
+                </div>
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progress-fill" style="width: 0%"></div>
+                </div>
+                <div class="progress-stats">
+                    <span id="progress-stats">已收集 0/0 项</span>
+                </div>
+            </div>
+            
+            <!-- Alert -->
+            <div class="alert alert-warning" id="alert-box" style="display: none;">
+                <span class="alert-icon">⚠️</span>
+                <div class="alert-content">
+                    <div class="alert-title" id="alert-title">证据不完整</div>
+                    <div id="alert-msg">请补充必填证据</div>
+                </div>
+            </div>
+            
+            <!-- Evidence List -->
+            <div class="section" id="evidence-section" style="display: none;">
+                <div class="section-title">
+                    📁 证据清单
+                    <span style="font-size: 12px; color: #999; font-weight: normal;">（点击状态按钮更新）</span>
+                </div>
+                <div id="evidence-list"></div>
+                <button class="add-evidence-btn" id="add-evidence-btn">
+                    ➕ 添加其他证据
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Update Modal -->
+    <div class="modal-overlay" id="update-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="modal-title" id="modal-title">更新证据状态</span>
+                <button class="modal-close" id="modal-close">×</button>
+            </div>
+            <div id="modal-body">
+                <p style="margin-bottom: 15px; color: #666; font-size: 14px;">
+                    证据: <strong id="modal-evidence-name"></strong>
+                </p>
+                <div style="margin-bottom: 15px;">
+                    <label style="display: block; font-size: 14px; margin-bottom: 8px;">状态</label>
+                    <div style="display: flex; gap: 10px;">
+                        <button class="btn" id="status-pending" style="flex: 1; background: #e0e0e0; color: #666;">待收集</button>
+                        <button class="btn" id="status-collected" style="flex: 1; background: #4caf50; color: white;">已收集</button>
+                        <button class="btn" id="status-unqualified" style="flex: 1; background: #ffebee; color: #c62828;">不合格</button>
+                    </div>
+                </div>
+                <label style="display: block; font-size: 14px; margin-bottom: 8px;">备注说明</label>
+                <textarea class="note-input" id="note-input" placeholder="如有需要说明的情况请在此填写..."></textarea>
+                <label style="display: block; font-size: 14px; margin-bottom: 8px;">上传材料</label>
+                <div class="upload-area" id="upload-area">
+                    <div class="upload-icon">📤</div>
+                    <div class="upload-text">点击上传图片或文件</div>
+                </div>
+                <div id="file-list" style="margin-bottom: 15px;"></div>
+                <button class="btn btn-primary" id="save-btn">保存</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Add Custom Evidence Modal -->
+    <div class="modal-overlay" id="add-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="modal-title">添加其他证据</span>
+                <button class="modal-close" id="add-modal-close">×</button>
+            </div>
+            <div class="form-group">
+                <label class="form-label">证据名称 <span style="color: #f44336;">*</span></label>
+                <input type="text" class="form-input" id="custom-name" placeholder="例如：同事证言">
+            </div>
+            <div class="form-group">
+                <label class="form-label">证据说明</label>
+                <input type="text" class="form-input" id="custom-desc" placeholder="简要说明此证据的内容和用途">
+            </div>
+            <div class="form-group">
+                <label style="font-size: 14px;">
+                    <input type="checkbox" id="custom-required"> 这是必填证据
+                </label>
+            </div>
+            <button class="btn btn-primary" id="save-custom-btn">添加</button>
+        </div>
+    </div>
+    
+    <!-- Toast -->
+    <div class="toast" id="toast"></div>
+    
+    <script>
+        const API_BASE = window.location.origin;
+        let currentPhone = localStorage.getItem('client_phone');
+        let currentCase = null;
+        let currentEvidence = null;
+        let selectedStatus = 'collected';
+        let tempFiles = [];
+        
+        const statusNames = {
+            pending: '待收集',
+            collected: '已收集',
+            unqualified: '不合格'
+        };
+        
+        // Init
+        document.addEventListener('DOMContentLoaded', () => {
+            if (currentPhone) {
+                login(currentPhone);
+            }
+        });
+        
+        function showToast(msg) {
+            const toast = document.getElementById('toast');
+            toast.textContent = msg;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 2000);
+        }
+        
+        // Login
+        document.getElementById('login-btn').addEventListener('click', () => {
+            const phone = document.getElementById('phone-input').value.trim();
+            if (!phone || phone.length !== 11) {
+                showToast('请输入正确的手机号');
+                return;
+            }
+            login(phone);
+        });
+        
+        async function login(phone) {
+            try {
+                const res = await fetch(API_BASE + '/api/client/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ phone })
+                });
+                
+                const data = await res.json();
+                if (data.success) {
+                    currentPhone = phone;
+                    localStorage.setItem('client_phone', phone);
+                    document.getElementById('user-name').textContent = data.client.name;
+                    
+                    const select = document.getElementById('case-select');
+                    select.innerHTML = '<option value="">选择案件</option>' +
+                        data.cases.map(c => `<option value="${c.caseId}">${c.caseId} - ${c.clientName}</option>`).join('');
+                    
+                    document.getElementById('login-page').style.display = 'none';
+                    document.getElementById('main-content').classList.add('show');
+                    
+                    if (data.cases.length > 0) {
+                        select.value = data.cases[0].caseId;
+                        loadEvidence(data.cases[0].caseId);
+                    }
+                    
+                    showToast('登录成功');
+                } else {
+                    showToast(data.error || '登录失败');
+                }
+            } catch (e) {
+                showToast('登录失败，请重试');
+            }
+        }
+        
+        // Logout
+        document.getElementById('logout-btn').addEventListener('click', () => {
+            localStorage.removeItem('client_phone');
+            location.reload();
+        });
+        
+        // Case selection
+        document.getElementById('case-select').addEventListener('change', (e) => {
+            if (e.target.value) {
+                loadEvidence(e.target.value);
+            } else {
+                document.getElementById('progress-card').style.display = 'none';
+                document.getElementById('alert-box').style.display = 'none';
+                document.getElementById('evidence-section').style.display = 'none';
+            }
+        });
+        
+        // Load evidence
+        async function loadEvidence(caseId) {
+            try {
+                const res = await fetch(API_BASE + `/api/client/evidence?caseId=${caseId}&phone=${currentPhone}`);
+                const data = await res.json();
+                
+                if (data.success) {
+                    currentCase = caseId;
+                    renderEvidence(data);
+                } else {
+                    showToast(data.error || '加载失败');
+                }
+            } catch (e) {
+                showToast('加载失败，请重试');
+            }
+        }
+        
+        function renderEvidence(data) {
+            const { evidence, summary } = data;
+            
+            document.getElementById('progress-card').style.display = 'block';
+            document.getElementById('progress-percent').textContent = summary.percent + '%';
+            document.getElementById('progress-fill').style.width = summary.percent + '%';
+            document.getElementById('progress-stats').textContent = 
+                `已收集 ${summary.collected}/${summary.total} 项 · 必填 ${summary.requiredCollected}/${summary.required} 项`;
+            
+            const alertBox = document.getElementById('alert-box');
+            if (summary.isComplete && summary.unqualified === 0) {
+                alertBox.className = 'alert alert-success';
+                alertBox.querySelector('.alert-icon').textContent = '✅';
+                document.getElementById('alert-title').textContent = '证据收集完成';
+                document.getElementById('alert-msg').textContent = '所有必填证据已收集完毕';
+            } else {
+                alertBox.className = 'alert alert-warning';
+                alertBox.querySelector('.alert-icon').textContent = '⚠️';
+                document.getElementById('alert-title').textContent = summary.unqualified > 0 ? '有不合格证据' : '证据不完整';
+                document.getElementById('alert-msg').textContent = summary.issues.join('；');
+            }
+            alertBox.style.display = 'flex';
+            
+            document.getElementById('evidence-section').style.display = 'block';
+            const list = document.getElementById('evidence-list');
+            
+            list.innerHTML = evidence.map(item => `
+                <div class="evidence-item ${item.status}">
+                    <div class="evidence-header">
+                        <div class="evidence-name">
+                            ${item.name}
+                            ${item.required ? '<span class="evidence-required">*必填</span>' : ''}
+                            ${item.isCustom ? '<span style="color: #667eea; font-size: 11px;">(自定义)</span>' : ''}
+                        </div>
+                        <span class="evidence-status ${item.status}">${statusNames[item.status]}</span>
+                    </div>
+                    <div class="evidence-desc">${item.description}</div>
+                    ${item.files && item.files.length > 0 ? `
+                        <div class="evidence-files">
+                            ${item.files.map(f => `
+                                <div class="file-tag">
+                                    📎 ${f.name}
+                                </div>
+                            `).join('')}
+                        </div>
+                    ` : ''}
+                    ${item.note ? `<div class="evidence-note">💬 ${item.note}</div>` : ''}
+                    <div class="evidence-actions">
+                        <button class="btn-collect" onclick="openUpdateModal('${item.id}')">更新状态</button>
+                        ${item.isCustom ? `<button onclick="deleteEvidence('${item.id}')" style="color: #f44336;">删除</button>` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        // Update modal
+        window.openUpdateModal = function(evidenceId) {
+            currentEvidence = evidenceId;
+            const item = document.querySelector(`.evidence-item:has(button[onclick*="${evidenceId}"])`);
+            const name = item.querySelector('.evidence-name').childNodes[0].textContent.trim();
+            
+            document.getElementById('modal-evidence-name').textContent = name;
+            document.getElementById('update-modal').classList.add('show');
+            
+            selectedStatus = 'collected';
+            updateStatusButtons();
+            document.getElementById('note-input').value = '';
+            tempFiles = [];
+            renderFileList();
+        };
+        
+        function updateStatusButtons() {
+            document.getElementById('status-pending').style.background = selectedStatus === 'pending' ? '#667eea' : '#e0e0e0';
+            document.getElementById('status-pending').style.color = selectedStatus === 'pending' ? 'white' : '#666';
+            document.getElementById('status-collected').style.background = selectedStatus === 'collected' ? '#4caf50' : '#e0e0e0';
+            document.getElementById('status-collected').style.color = selectedStatus === 'collected' ? 'white' : '#666';
+            document.getElementById('status-unqualified').style.background = selectedStatus === 'unqualified' ? '#f44336' : '#ffebee';
+            document.getElementById('status-unqualified').style.color = selectedStatus === 'unqualified' ? 'white' : '#c62828';
+        }
+        
+        document.getElementById('status-pending').addEventListener('click', () => { selectedStatus = 'pending'; updateStatusButtons(); });
+        document.getElementById('status-collected').addEventListener('click', () => { selectedStatus = 'collected'; updateStatusButtons(); });
+        document.getElementById('status-unqualified').addEventListener('click', () => { selectedStatus = 'unqualified'; updateStatusButtons(); });
+        
+        document.getElementById('modal-close').addEventListener('click', () => {
+            document.getElementById('update-modal').classList.remove('show');
+        });
+        
+        // Upload
+        document.getElementById('upload-area').addEventListener('click', () => {
+            const fileName = '材料_' + Date.now().toString().slice(-4) + '.jpg';
+            tempFiles.push({ name: fileName, size: 0 });
+            renderFileList();
+            showToast('文件已添加（演示模式）');
+        });
+        
+        function renderFileList() {
+            const list = document.getElementById('file-list');
+            if (tempFiles.length === 0) {
+                list.innerHTML = '';
+                return;
+            }
+            list.innerHTML = tempFiles.map((f, i) => `
+                <div class="file-tag" style="margin-bottom: 5px;">
+                    📎 ${f.name}
+                    <button onclick="removeFile(${i})">×</button>
+                </div>
+            `).join('');
+        }
+        
+        window.removeFile = function(index) {
+            tempFiles.splice(index, 1);
+            renderFileList();
+        };
+        
+        document.getElementById('save-btn').addEventListener('click', async () => {
+            if (!currentEvidence || !currentCase) return;
+            
+            try {
+                const res = await fetch(API_BASE + '/api/client/evidence/update', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        caseId: currentCase,
+                        phone: currentPhone,
+                        evidenceId: currentEvidence,
+                        status: selectedStatus,
+                        note: document.getElementById('note-input').value,
+                        files: tempFiles
+                    })
+                });
+                
+                const data = await res.json();
+                if (data.success) {
+                    showToast('保存成功');
+                    document.getElementById('update-modal').classList.remove('show');
+                    loadEvidence(currentCase);
+                } else {
+                    showToast(data.error || '保存失败');
+                }
+            } catch (e) {
+                showToast('保存失败，请重试');
+            }
+        });
+        
+        // Add custom evidence
+        document.getElementById('add-evidence-btn').addEventListener('click', () => {
+            document.getElementById('add-modal').classList.add('show');
+        });
+        
+        document.getElementById('add-modal-close').addEventListener('click', () => {
+            document.getElementById('add-modal').classList.remove('show');
+        });
+        
+        document.getElementById('save-custom-btn').addEventListener('click', async () => {
+            const name = document.getElementById('custom-name').value.trim();
+            const desc = document.getElementById('custom-desc').value.trim();
+            const required = document.getElementById('custom-required').checked;
+            
+            if (!name) {
+                showToast('请输入证据名称');
+                return;
+            }
+            if (!currentCase) {
+                showToast('请先选择案件');
+                return;
+            }
+            
+            try {
+                const res = await fetch(API_BASE + '/api/client/evidence/add', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        caseId: currentCase,
+                        phone: currentPhone,
+                        name,
+                        description: desc,
+                        required
+                    })
+                });
+                
+                const data = await res.json();
+                if (data.success) {
+                    showToast('添加成功');
+                    document.getElementById('add-modal').classList.remove('show');
+                    document.getElementById('custom-name').value = '';
+                    document.getElementById('custom-desc').value = '';
+                    document.getElementById('custom-required').checked = false;
+                    loadEvidence(currentCase);
+                } else {
+                    showToast(data.error || '添加失败');
+                }
+            } catch (e) {
+                showToast('添加失败，请重试');
+            }
+        });
+        
+        // Delete evidence
+        window.deleteEvidence = async function(evidenceId) {
+            if (!confirm('确定要删除这项证据吗？')) return;
+            
+            try {
+                const res = await fetch(API_BASE + '/api/client/evidence/delete', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        caseId: currentCase,
+                        phone: currentPhone,
+                        evidenceId
+                    })
+                });
+                
+                const data = await res.json();
+                if (data.success) {
+                    showToast('删除成功');
+                    loadEvidence(currentCase);
+                } else {
+                    showToast(data.error || '删除失败');
+                }
+            } catch (e) {
+                showToast('删除失败，请重试');
+            }
+        };
+    </script>
+</body>
+</html>

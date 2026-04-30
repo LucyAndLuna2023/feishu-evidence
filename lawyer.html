@@ -1,0 +1,697 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>律师工作台 - 劳动纠纷证据系统</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+        }
+        .container { max-width: 1200px; margin: 0 auto; background: #fff; min-height: 100vh; }
+        
+        /* Header */
+        .header {
+            background: linear-gradient(135deg, #1a237e 0%, #283593 100%);
+            color: white;
+            padding: 20px;
+        }
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+        .header h1 { font-size: 20px; font-weight: 600; }
+        .header-actions { display: flex; gap: 10px; }
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        .btn-primary {
+            background: #4caf50;
+            color: white;
+        }
+        .btn-secondary {
+            background: rgba(255,255,255,0.2);
+            color: white;
+        }
+        
+        /* Stats */
+        .stats {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+        }
+        .stat-card {
+            background: rgba(255,255,255,0.1);
+            padding: 15px;
+            border-radius: 10px;
+        }
+        .stat-value { font-size: 28px; font-weight: 700; }
+        .stat-label { font-size: 12px; opacity: 0.8; }
+        
+        /* Main */
+        .main { padding: 20px; }
+        
+        /* Case List */
+        .case-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        .case-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+            cursor: pointer;
+            transition: all 0.3s;
+            border: 2px solid transparent;
+        }
+        .case-card:hover {
+            box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+            border-color: #1a237e;
+        }
+        .case-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .case-id { font-size: 14px; font-weight: 600; color: #1a237e; }
+        .case-status {
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+        .case-status.collecting { background: #e3f2fd; color: #1565c0; }
+        .case-status.completed { background: #e8f5e9; color: #2e7d32; }
+        
+        .case-client {
+            font-size: 18px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 5px;
+        }
+        .case-phone { font-size: 13px; color: #666; margin-bottom: 15px; }
+        
+        .case-type {
+            display: inline-block;
+            padding: 4px 10px;
+            background: #f5f5f5;
+            border-radius: 6px;
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 15px;
+        }
+        
+        .case-progress {
+            margin-bottom: 10px;
+        }
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            font-size: 12px;
+            color: #666;
+            margin-bottom: 5px;
+        }
+        .progress-bar {
+            height: 6px;
+            background: #eee;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4caf50, #8bc34a);
+            border-radius: 3px;
+            transition: width 0.3s;
+        }
+        
+        .case-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 15px;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+            font-size: 12px;
+            color: #999;
+        }
+        
+        /* Login Page */
+        .login-page {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(135deg, #1a237e 0%, #283593 100%);
+        }
+        .login-box {
+            background: white;
+            padding: 40px;
+            border-radius: 16px;
+            width: 100%;
+            max-width: 400px;
+        }
+        .login-title {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .login-title h2 { font-size: 24px; color: #333; margin-bottom: 10px; }
+        .login-title p { font-size: 14px; color: #666; }
+        .form-group { margin-bottom: 20px; }
+        .form-label { display: block; font-size: 14px; color: #333; margin-bottom: 8px; }
+        .form-input {
+            width: 100%;
+            padding: 14px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            font-size: 16px;
+        }
+        .form-input:focus { outline: none; border-color: #1a237e; }
+        .login-box .btn { width: 100%; padding: 14px; font-size: 16px; }
+        
+        /* Modal */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            padding: 20px;
+        }
+        .modal-overlay.show { display: flex; }
+        .modal-content {
+            background: white;
+            border-radius: 16px;
+            width: 100%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        .modal-header {
+            padding: 20px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .modal-title { font-size: 18px; font-weight: 600; }
+        .modal-close {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: none;
+            background: #f5f5f5;
+            cursor: pointer;
+            font-size: 18px;
+        }
+        .modal-body { padding: 20px; }
+        .modal-footer {
+            padding: 15px 20px;
+            border-top: 1px solid #eee;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        
+        /* Evidence List */
+        .evidence-list { margin-top: 20px; }
+        .evidence-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 10px;
+            margin-bottom: 10px;
+        }
+        .evidence-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+        .evidence-icon.collected { background: #e8f5e9; }
+        .evidence-icon.pending { background: #fff3e0; }
+        .evidence-icon.unqualified { background: #ffebee; }
+        .evidence-content { flex: 1; }
+        .evidence-name { font-weight: 500; margin-bottom: 4px; }
+        .evidence-desc { font-size: 12px; color: #666; }
+        .evidence-status {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+        .evidence-status.collected { background: #4caf50; color: white; }
+        .evidence-status.pending { background: #ff9800; color: white; }
+        .evidence-status.unqualified { background: #f44336; color: white; }
+        
+        /* Create Case Form */
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        .form-select {
+            width: 100%;
+            padding: 14px;
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            font-size: 16px;
+            background: white;
+        }
+        
+        /* Empty State */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #999;
+        }
+        .empty-icon { font-size: 60px; margin-bottom: 20px; }
+        .empty-text { font-size: 16px; margin-bottom: 20px; }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .stats { grid-template-columns: repeat(2, 1fr); }
+            .case-grid { grid-template-columns: 1fr; }
+            .form-row { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Login Page -->
+        <div class="login-page" id="login-page">
+            <div class="login-box">
+                <div class="login-title">
+                    <h2>⚖️ 律师工作台</h2>
+                    <p>劳动纠纷证据收集系统</p>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">律师姓名</label>
+                    <input type="text" class="form-input" id="lawyer-name" placeholder="请输入您的姓名">
+                </div>
+                <div class="form-group">
+                    <label class="form-label">密码</label>
+                    <input type="password" class="form-input" id="lawyer-password" placeholder="请输入密码">
+                </div>
+                <button class="btn btn-primary" id="login-btn">登录</button>
+                <div style="text-align: center; margin-top: 20px; font-size: 13px;">
+                    <a href="/" style="color: #666;">← 返回客户入口</a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Main Page -->
+        <div id="main-page" style="display: none;">
+            <!-- Header -->
+            <div class="header">
+                <div class="header-top">
+                    <h1>⚖️ 律师工作台</h1>
+                    <div class="header-actions">
+                        <button class="btn btn-primary" id="create-case-btn">+ 新建案件</button>
+                        <button class="btn btn-secondary" id="logout-btn">退出</button>
+                    </div>
+                </div>
+                <div class="stats">
+                    <div class="stat-card">
+                        <div class="stat-value" id="stat-total">0</div>
+                        <div class="stat-label">全部案件</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="stat-collecting">0</div>
+                        <div class="stat-label">收集中</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="stat-completed">0</div>
+                        <div class="stat-label">已完成</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-value" id="stat-progress">0%</div>
+                        <div class="stat-label">平均进度</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Main Content -->
+            <div class="main">
+                <div class="case-grid" id="case-list">
+                    <!-- Cases will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Create Case Modal -->
+    <div class="modal-overlay" id="create-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="modal-title">新建案件</span>
+                <button class="modal-close" id="create-modal-close">×</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label class="form-label">客户姓名</label>
+                        <input type="text" class="form-input" id="new-client-name" placeholder="客户姓名">
+                    </div>
+                    <div class="form-group">
+                        <label class="form-label">客户手机号</label>
+                        <input type="tel" class="form-input" id="new-client-phone" placeholder="11位手机号">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">案件类型</label>
+                    <select class="form-select" id="new-case-type">
+                        <option value="illegal_termination">违法解除劳动合同</option>
+                        <option value="unpaid_wages">拖欠工资</option>
+                        <option value="unpaid_leave">未休年假</option>
+                        <option value="work_injury">工伤赔偿</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label class="form-label">案件备注</label>
+                    <input type="text" class="form-input" id="new-case-notes" placeholder="可选：备注信息">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="create-cancel">取消</button>
+                <button class="btn btn-primary" id="create-confirm">创建</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Case Detail Modal -->
+    <div class="modal-overlay" id="detail-modal">
+        <div class="modal-content" style="max-width: 700px;">
+            <div class="modal-header">
+                <span class="modal-title" id="detail-title">案件详情</span>
+                <button class="modal-close" id="detail-modal-close">×</button>
+            </div>
+            <div class="modal-body">
+                <div id="detail-content">
+                    <!-- Detail content will be loaded here -->
+                </div>
+                <div class="evidence-list" id="detail-evidence">
+                    <!-- Evidence list will be loaded here -->
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" id="detail-close">关闭</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const API_BASE = window.location.origin;
+        let currentLawyer = localStorage.getItem('lawyer_name');
+        
+        // Init
+        document.addEventListener('DOMContentLoaded', () => {
+            if (currentLawyer) {
+                showMainPage();
+                loadCases();
+            }
+        });
+        
+        function showMainPage() {
+            document.getElementById('login-page').style.display = 'none';
+            document.getElementById('main-page').style.display = 'block';
+        }
+        
+        function showLoginPage() {
+            document.getElementById('login-page').style.display = 'flex';
+            document.getElementById('main-page').style.display = 'none';
+        }
+        
+        // Login
+        document.getElementById('login-btn').addEventListener('click', async () => {
+            const name = document.getElementById('lawyer-name').value.trim();
+            const password = document.getElementById('lawyer-password').value;
+            
+            if (!name || !password) {
+                alert('请输入用户名和密码');
+                return;
+            }
+            
+            try {
+                const res = await fetch(API_BASE + '/api/lawyer/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name, password })
+                });
+                
+                const data = await res.json();
+                if (data.success) {
+                    currentLawyer = name;
+                    localStorage.setItem('lawyer_name', name);
+                    showMainPage();
+                    loadCases();
+                } else {
+                    alert(data.error || '登录失败');
+                }
+            } catch (e) {
+                alert('登录失败，请重试');
+            }
+        });
+        
+        // Logout
+        document.getElementById('logout-btn').addEventListener('click', () => {
+            localStorage.removeItem('lawyer_name');
+            currentLawyer = null;
+            showLoginPage();
+        });
+        
+        // Load cases
+        async function loadCases() {
+            if (!currentLawyer) return;
+            
+            try {
+                const res = await fetch(API_BASE + `/api/lawyer/cases?lawyer=${currentLawyer}`);
+                const data = await res.json();
+                
+                if (data.success) {
+                    renderCases(data.cases);
+                    updateStats(data.cases);
+                }
+            } catch (e) {
+                console.error('加载失败:', e);
+            }
+        }
+        
+        function updateStats(cases) {
+            const total = cases.length;
+            const collecting = cases.filter(c => c.status === 'collecting').length;
+            const completed = cases.filter(c => c.status === 'completed').length;
+            const avgProgress = total > 0 ? Math.round(cases.reduce((sum, c) => sum + c.progress.percent, 0) / total) : 0;
+            
+            document.getElementById('stat-total').textContent = total;
+            document.getElementById('stat-collecting').textContent = collecting;
+            document.getElementById('stat-completed').textContent = completed;
+            document.getElementById('stat-progress').textContent = avgProgress + '%';
+        }
+        
+        function renderCases(cases) {
+            const list = document.getElementById('case-list');
+            
+            if (cases.length === 0) {
+                list.innerHTML = `
+                    <div class="empty-state" style="grid-column: 1 / -1;">
+                        <div class="empty-icon">📋</div>
+                        <div class="empty-text">暂无案件</div>
+                        <button class="btn btn-primary" onclick="openCreateModal()">创建第一个案件</button>
+                    </div>
+                `;
+                return;
+            }
+            
+            const typeNames = {
+                illegal_termination: '违法解除劳动合同',
+                unpaid_wages: '拖欠工资',
+                unpaid_leave: '未休年假',
+                work_injury: '工伤赔偿'
+            };
+            
+            list.innerHTML = cases.map(c => `
+                <div class="case-card" onclick="openDetailModal('${c.caseId}')">
+                    <div class="case-header">
+                        <span class="case-id">${c.caseId}</span>
+                        <span class="case-status ${c.status}">${c.status === 'collecting' ? '收集中' : '已完成'}</span>
+                    </div>
+                    <div class="case-client">${c.clientName}</div>
+                    <div class="case-phone">${c.clientPhone}</div>
+                    <span class="case-type">${typeNames[c.caseType]}</span>
+                    <div class="case-progress">
+                        <div class="progress-header">
+                            <span>证据收集进度</span>
+                            <span>${c.progress.percent}%</span>
+                        </div>
+                        <div class="progress-bar">
+                            <div class="progress-fill" style="width: ${c.progress.percent}%"></div>
+                        </div>
+                    </div>
+                    <div class="case-footer">
+                        <span>必填: ${c.progress.requiredCollected}/${c.progress.required}</span>
+                        <span>共 ${c.progress.total} 项证据</span>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        // Create case modal
+        const createModal = document.getElementById('create-modal');
+        
+        document.getElementById('create-case-btn').addEventListener('click', openCreateModal);
+        document.getElementById('create-modal-close').addEventListener('click', () => createModal.classList.remove('show'));
+        document.getElementById('create-cancel').addEventListener('click', () => createModal.classList.remove('show'));
+        
+        function openCreateModal() {
+            createModal.classList.add('show');
+        }
+        
+        document.getElementById('create-confirm').addEventListener('click', async () => {
+            const clientName = document.getElementById('new-client-name').value.trim();
+            const clientPhone = document.getElementById('new-client-phone').value.trim();
+            const caseType = document.getElementById('new-case-type').value;
+            const notes = document.getElementById('new-case-notes').value.trim();
+            
+            if (!clientName || !clientPhone) {
+                alert('请填写客户信息');
+                return;
+            }
+            
+            try {
+                const res = await fetch(API_BASE + '/api/lawyer/cases', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        lawyer: currentLawyer,
+                        clientName,
+                        clientPhone,
+                        caseType,
+                        notes
+                    })
+                });
+                
+                const data = await res.json();
+                if (data.success) {
+                    createModal.classList.remove('show');
+                    // Clear form
+                    document.getElementById('new-client-name').value = '';
+                    document.getElementById('new-client-phone').value = '';
+                    document.getElementById('new-case-notes').value = '';
+                    loadCases();
+                } else {
+                    alert(data.error || '创建失败');
+                }
+            } catch (e) {
+                alert('创建失败，请重试');
+            }
+        });
+        
+        // Detail modal
+        const detailModal = document.getElementById('detail-modal');
+        
+        document.getElementById('detail-modal-close').addEventListener('click', () => detailModal.classList.remove('show'));
+        document.getElementById('detail-close').addEventListener('click', () => detailModal.classList.remove('show'));
+        
+        window.openDetailModal = async function(caseId) {
+            try {
+                const res = await fetch(API_BASE + `/api/lawyer/evidence?lawyer=${currentLawyer}&caseId=${caseId}`);
+                const data = await res.json();
+                
+                if (data.success) {
+                    const typeNames = {
+                        illegal_termination: '违法解除劳动合同',
+                        unpaid_wages: '拖欠工资',
+                        unpaid_leave: '未休年假',
+                        work_injury: '工伤赔偿'
+                    };
+                    
+                    document.getElementById('detail-title').textContent = `案件详情 - ${data.case.caseId}`;
+                    
+                    document.getElementById('detail-content').innerHTML = `
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 20px; padding: 15px; background: #f9f9f9; border-radius: 10px;">
+                            <div>
+                                <div style="font-size: 12px; color: #999; margin-bottom: 5px;">客户姓名</div>
+                                <div style="font-weight: 500;">${data.case.clientName}</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 12px; color: #999; margin-bottom: 5px;">联系电话</div>
+                                <div style="font-weight: 500;">${data.case.clientPhone}</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 12px; color: #999; margin-bottom: 5px;">案件类型</div>
+                                <div style="font-weight: 500;">${typeNames[data.case.caseType]}</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 12px; color: #999; margin-bottom: 5px;">创建日期</div>
+                                <div style="font-weight: 500;">${data.case.createdAt}</div>
+                            </div>
+                        </div>
+                        <div style="margin-bottom: 15px;">
+                            <div style="font-size: 12px; color: #999; margin-bottom: 5px;">证据收集进度</div>
+                            <div style="display: flex; align-items: center; gap: 10px;">
+                                <div style="flex: 1; height: 8px; background: #eee; border-radius: 4px; overflow: hidden;">
+                                    <div style="width: ${data.summary.percent}%; height: 100%; background: linear-gradient(90deg, #4caf50, #8bc34a); border-radius: 4px;"></div>
+                                </div>
+                                <span style="font-weight: 600;">${data.summary.percent}%</span>
+                            </div>
+                            <div style="font-size: 12px; color: #666; margin-top: 5px;">
+                                已收集 ${data.summary.collected}/${data.summary.total} 项 · 必填 ${data.summary.requiredCollected}/${data.summary.required} 项
+                            </div>
+                        </div>
+                    `;
+                    
+                    const statusIcons = {
+                        collected: '✅',
+                        pending: '⏳',
+                        unqualified: '❌'
+                    };
+                    
+                    const statusNames = {
+                        collected: '已收集',
+                        pending: '待收集',
+                        unqualified: '不合格'
+                    };
+                    
+                    document.getElementById('detail-evidence').innerHTML = data.evidence.map(e => `
+                        <div class="evidence-item">
+                            <div class="evidence-icon ${e.status}">${statusIcons[e.status]}</div>
+                            <div class="evidence-content">
+                                <div class="evidence-name">${e.name} ${e.required ? '<span style="color: #f44336;">*</span>' : ''}</div>
+                                <div class="evidence-desc">${e.description}</div>
+                            </div>
+                            <span class="evidence-status ${e.status}">${statusNames[e.status]}</span>
+                        </div>
+                    `).join('');
+                    
+                    detailModal.classList.add('show');
+                }
+            } catch (e) {
+                console.error('加载失败:', e);
+            }
+        };
+    </script>
+</body>
+</html>
